@@ -5,6 +5,7 @@ import { AnalysisModule } from './analysis/analysis.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
+import { OpenAIModule } from './openai/openai.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AnalysisResultsModule } from './analysis-results/analysis-results.modul
       }),
     }),
     AnalysisResultsModule,
+    OpenAIModule,
   ],
   controllers: [AppController],
   providers: [AppService],
