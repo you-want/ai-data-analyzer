@@ -9,7 +9,10 @@ import { AnalysisResultsModule } from './analysis-results/analysis-results.modul
 @Module({
   imports: [
     AnalysisModule,
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

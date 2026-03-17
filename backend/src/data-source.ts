@@ -4,9 +4,6 @@ import { join } from 'path';
 // 为了让 dotenv 在 TS 环境下安全运行
 import 'dotenv/config';
 
-// 手动配置路径
-process.env.DOTENV_CONFIG_PATH = join(__dirname, '../../.env');
-
 // 实例化一个临时的 ConfigService 供 TypeORM CLI 使用
 const configService = new ConfigService();
 

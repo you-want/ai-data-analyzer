@@ -18,4 +18,20 @@ export class AnalysisResultsService {
   async findAll(): Promise<AnalysisResult[]> {
     return this.analysisResultRepository.find();
   }
+
+  async findOne(id: string): Promise<AnalysisResult | null> {
+    return this.analysisResultRepository.findOne({ where: { id } });
+  }
+
+  async update(
+    id: string,
+    data: Partial<AnalysisResult>,
+  ): Promise<AnalysisResult | null> {
+    await this.analysisResultRepository.update(id, data as any);
+    return this.findOne(id);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.analysisResultRepository.delete(id);
+  }
 }
