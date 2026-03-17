@@ -5,9 +5,9 @@ services:
     container_name: ai_analyzer_postgres
     restart: always
     environment:
-      POSTGRES_USER: rain9_ai_data
-      POSTGRES_PASSWORD: rain9_ai_data_admin
-      POSTGRES_DB: ai_analysis_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
