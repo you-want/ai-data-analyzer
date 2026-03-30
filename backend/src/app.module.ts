@@ -26,6 +26,8 @@ import { OpenAIModule } from './openai/openai.module';
         autoLoadEntities: true,
         synchronize: false,
         logging: ['error'],
+        retryAttempts: 15,
+        retryDelay: 3000,
       }),
     }),
     AnalysisResultsModule,

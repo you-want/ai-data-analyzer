@@ -6,9 +6,13 @@ import OpenAI from 'openai';
 export class OpenAIService {
   private readonly openai: OpenAI;
   private readonly logger = new Logger(OpenAIService.name);
+  private readonly defaultModel: string;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const baseURL = this.configService.get<string>('OPENAI_BASE_URL');
+    this.defaultModel =
+      this.configService.get<string>('OPENAI_MODEL') || 'gpt-3.5-turbo';
 
     if (!apiKey) {
       this.logger.error('OPENAI_API_KEY is not defined');
@@ -16,7 +20,8 @@ export class OpenAIService {
     }
 
     this.openai = new OpenAI({
-      apiKey: apiKey,
+      apiKey,
+      baseURL,
     });
   }
 
@@ -25,11 +30,11 @@ export class OpenAIService {
    * @param content 用户输入的内容
    * @param model 模型名称，默认为 gpt-3.5-turbo
    */
-  async chat(content: string, model = 'gpt-3.5-turbo'): Promise<string> {
+  async chat(content: string, model?: string): Promise<string> {
     try {
       const completion = await this.openai.chat.completions.create({
         messages: [{ role: 'user', content }],
-        model: model,
+        model: model || this.defaultModel,
       });
 
       return completion.choices[0]?.message?.content || '';
