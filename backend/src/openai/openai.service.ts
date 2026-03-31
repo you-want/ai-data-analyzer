@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { ILLMService } from './llm.interface';
 
 @Injectable()
-export class OpenAIService {
+export class OpenAIService implements ILLMService {
   private readonly openai: OpenAI;
   private readonly logger = new Logger(OpenAIService.name);
   private readonly defaultModel: string;

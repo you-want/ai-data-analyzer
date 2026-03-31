@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { OpenAIService } from '../openai/openai.service';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import type { ILLMService } from '../openai/llm.interface';
 
 const AGENT_SYSTEM_PROMPT = `
   你是一个专业的数据分析 AI Agent。请根据用户的请求和提供的数据，逐步进行分析。
@@ -25,8 +25,10 @@ export class AnalysisService {
   // 日志记录器
   private readonly logger = new Logger(AnalysisService.name);
 
-  // 构造函数，注入 OpenAIService
-  constructor(private readonly openAIService: OpenAIService) {}
+  // 无论底层是 OpenAI 还是 Claude，这里都能通过依赖注入 Token 无缝接收
+  constructor(
+    @Inject('LLM_SERVICE') private readonly llmService: ILLMService,
+  ) {}
 
   /**
    * 将 JSON 数组转换为 Markdown 表格，大幅节省 Token
@@ -98,7 +100,7 @@ export class AnalysisService {
     const prompt = `你是一个专业的数据分析专家。请仔细阅读并分析以下文本数据，提取出关键信息、主要观点，并给出你的专业总结或建议：\n\n"""\n${cleanContent}\n"""`;
 
     // 3. 调用 AI 服务
-    return this.openAIService.chat(prompt);
+    return this.llmService.chat(prompt);
   }
 
   /**
@@ -122,7 +124,7 @@ export class AnalysisService {
           `;
 
     // 3. 调用 AI 服务
-    return this.openAIService.chat(finalPrompt);
+    return this.llmService.chat(finalPrompt);
   }
 
   // 保留原有方法兼容性
@@ -211,7 +213,7 @@ export class AnalysisService {
       this.logger.debug(`Agent Iteration ${iterations}...`);
 
       // 1. 调用大模型
-      const aiResponse = await this.openAIService.chat(conversationHistory);
+      const aiResponse = await this.llmService.chat(conversationHistory);
       this.logger.debug(`AI Response:\n${aiResponse}`);
       conversationHistory += `\n${aiResponse}\n`; // 记录 AI 的回复
 
