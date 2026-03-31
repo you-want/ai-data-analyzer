@@ -3,6 +3,8 @@ import AnalysisForm from '@/components/AnalysisForm';
 import UploadForm from '@/components/UploadForm';
 import TaskStatusViewer from '@/components/TaskStatusViewer';
 import MetricCard from '@/components/MetricCard';
+import AdvancedSalesChart from '@/components/charts/AdvancedSalesChart';
+import DataGalaxy3D from '@/components/charts/DataGalaxy3D';
 
 export default async function DashboardPage() {
   // 服务端获取基础状态 (极快)
@@ -67,6 +69,15 @@ export default async function DashboardPage() {
           value="0" 
           icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
         />
+      </div>
+
+      {/* 数据可视化区域：2D ECharts 与 3D Three.js */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[450px]">
+        {/* 左侧：2D 复杂图表 (ECharts) */}
+        <AdvancedSalesChart />
+
+        {/* 右侧：3D 数据星系 (Three.js / React Three Fiber) */}
+        <DataGalaxy3D />
       </div>
 
       {/* 业务功能操作区 */}
