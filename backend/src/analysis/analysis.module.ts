@@ -7,5 +7,6 @@ import { OpenAIModule } from '../openai/openai.module'; // 导入模块
   imports: [OpenAIModule], // 添加到 imports
   controllers: [AnalysisController],
   providers: [AnalysisService],
+  exports: [AnalysisService],
 })
 export class AnalysisModule {}

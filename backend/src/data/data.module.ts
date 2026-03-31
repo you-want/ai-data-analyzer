@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DataController } from './data.controller';
+import { AnalysisModule } from '../analysis/analysis.module';
 
 @Module({
-  controllers: [DataController]
+  imports: [AnalysisModule],
+  controllers: [DataController],
 })
 export class DataModule {}

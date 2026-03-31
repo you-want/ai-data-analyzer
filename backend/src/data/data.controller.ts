@@ -4,13 +4,17 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { parse } from 'fast-csv';
 import * as multer from 'multer';
+import { AnalysisService } from '../analysis/analysis.service';
 
 @Controller('data')
 export class DataController {
+  constructor(private readonly analysisService: AnalysisService) {}
+
   @Post('upload/csv')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -18,7 +22,10 @@ export class DataController {
       limits: { fileSize: 10 * 1024 * 1024 }, // 限制 10MB
     }),
   )
-  async uploadCsv(@UploadedFile() file: Express.Multer.File) {
+  async uploadCsv(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('prompt') prompt?: string,
+  ) {
     if (!file) {
       throw new BadRequestException('请上传 CSV 文件');
     }
@@ -31,14 +38,23 @@ export class DataController {
         .on('error', (error: Error) =>
           reject(new BadRequestException(`CSV 解析失败: ${error.message}`)),
         )
-
         .on('data', (row: Record<string, string>) => rows.push(row))
         .on('end', () => resolve());
 
       stream.write(file.buffer);
-
       stream.end();
     });
+
+    // 如果用户传了 prompt 参数，就调用 Agent 进行分析
+    if (prompt) {
+      const agentResult = await this.analysisService.runAgentLoop(rows, prompt);
+      return {
+        message: 'Agent 分析完成',
+        rowCount: rows.length,
+        prompt,
+        agentResult,
+      };
+    }
 
     // 这里可以进一步将 rows 存入数据库，或者直接传递给分析服务
     return {

@@ -32,12 +32,15 @@ export class OpenAIService {
    */
   async chat(content: string, model?: string): Promise<string> {
     try {
+      this.logger.debug(`Sending request to OpenAI...`);
       const completion = await this.openai.chat.completions.create({
         messages: [{ role: 'user', content }],
         model: model || this.defaultModel,
       });
 
-      return completion.choices[0]?.message?.content || '';
+      const responseContent = completion.choices[0]?.message?.content || '';
+      this.logger.debug(`Received response from OpenAI:\n${responseContent}`);
+      return responseContent;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
