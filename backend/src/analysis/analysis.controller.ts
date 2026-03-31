@@ -8,12 +8,27 @@ import {
   Sse,
   MessageEvent,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { AnalysisService } from './analysis.service';
 import { AnalyzeTextDto } from './dto/analyze-text.dto';
 import { Observable } from 'rxjs';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+
+import { z } from 'zod';
+
+const UploadDataSchema = z.object({
+  prompt: z.string().min(5, '分析提示词太短'),
+  data: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        value: z.number().min(0, '数据值不能为负数'),
+      }),
+    )
+    .min(1, '上传的数据不能为空'),
+});
 
 @Controller('analysis')
 export class AnalysisController {
@@ -41,6 +56,12 @@ export class AnalysisController {
   async uploadAndAnalyzeAsync(
     @Body() payload: { data: any[]; prompt: string },
   ) {
+    // 0. 使用 Zod 进行数据验证
+    const validationResult = UploadDataSchema.safeParse(payload);
+    if (!validationResult.success) {
+      throw new BadRequestException(validationResult.error.format());
+    }
+
     // 1. 将数据和 prompt 推入队列
     const job = await this.analysisQueue.add('analyze-job', {
       data: payload.data,
@@ -71,9 +92,19 @@ export class AnalysisController {
     });
   }
 
-  @Get()
-  getAnalysis(): string {
-    return this.analysisService.getAnalysisResult();
+  @Post('structured')
+  @HttpCode(HttpStatus.OK)
+  async analyzeStructured(@Body() payload: { prompt: string }) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const result = await this.analysisService.analyzeWithStructuredOutput(
+      payload.prompt,
+    );
+
+    return {
+      success: true,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      data: result,
+    };
   }
 
   // 健康检查接口

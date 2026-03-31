@@ -141,9 +141,70 @@ export class AnalysisService {
     return this.llmService.chat(finalPrompt);
   }
 
-  // 保留原有方法兼容性
-  getAnalysisResult(): string {
-    return 'This is a detailed analysis result from the AnalysisService.';
+  /**
+   * AI 结构化输出与验证 (带重试机制)
+   */
+  async analyzeWithStructuredOutput(
+    prompt: string,
+    maxRetries = 3,
+  ): Promise<any> {
+    const systemPrompt = `你是一个专业的数据分析专家。请仔细分析数据，并**严格**按照以下 JSON 格式输出，不要输出任何额外的文本：
+{
+  "summary": "对数据的简短摘要分析",
+  "confidenceScore": 0.95,
+  "keyFindings": ["发现1", "发现2"]
+}`;
+
+    const finalPrompt = `${systemPrompt}\n\n用户请求:\n${prompt}`;
+
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        this.logger.debug(
+          `尝试结构化输出 (第 ${attempt + 1}/${maxRetries} 次)`,
+        );
+        const response = await this.llmService.chat(finalPrompt);
+
+        // 尝试解析 JSON
+        // 处理可能存在的 Markdown 代码块包裹
+        const cleanedResponse = response
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const result = JSON.parse(cleanedResponse);
+
+        // 简单的结构验证
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          !result.summary ||
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          typeof result.confidenceScore !== 'number' ||
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          !Array.isArray(result.keyFindings)
+        ) {
+          throw new Error('AI 返回的 JSON 结构不符合预期');
+        }
+
+        this.logger.log(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          `结构化输出解析成功！信心分数: ${result.confidenceScore}`,
+        );
+        return result;
+      } catch (error) {
+        attempt++;
+        const err = error as Error;
+        this.logger.warn(
+          `结构化输出解析失败 (第 ${attempt} 次): ${err.message}`,
+        );
+
+        if (attempt >= maxRetries) {
+          this.logger.error(`达到最大重试次数 (${maxRetries})，放弃。`);
+          throw new Error('AI 输出格式始终错误，请稍后重试');
+        }
+      }
+    }
   }
 
   /**
