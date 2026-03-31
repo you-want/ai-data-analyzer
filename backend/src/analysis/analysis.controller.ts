@@ -9,6 +9,7 @@ import {
   MessageEvent,
   Query,
   BadRequestException,
+  Param,
 } from '@nestjs/common';
 import { AnalysisService } from './analysis.service';
 import { AnalyzeTextDto } from './dto/analyze-text.dto';
@@ -111,5 +112,19 @@ export class AnalysisController {
   @Get('status')
   getStatus(): string {
     return 'Analysis service is up and running!';
+  }
+
+  // 模拟的查询任务状态接口 (用于 SWR 轮询)
+  @Get('status/:id')
+  getTaskStatus(@Param('id') id: string) {
+    // 这里简单模拟一个状态返回，实际项目中应从 Redis 或数据库查询真实状态
+    return {
+      taskId: id,
+      status: 'completed', // pending, processing, completed, failed
+      result: {
+        summary: `任务 ${id} 的模拟分析结果`,
+        confidenceScore: 0.95,
+      },
+    };
   }
 }

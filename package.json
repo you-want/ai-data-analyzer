@@ -1,0 +1,12 @@
+{
+  "name": "ai-data-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preinstall": "npx only-allow pnpm"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  }
+}

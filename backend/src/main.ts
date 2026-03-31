@@ -9,6 +9,12 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn', 'debug', 'verbose'],
   });
 
+  // 开启 CORS 允许前端跨域请求
+  app.enableCors({
+    origin: 'http://localhost:3000', // 允许 Next.js 前端地址
+    credentials: true,
+  });
+
   // 启用全局验证管道
   app.useGlobalPipes(
     new ValidationPipe({

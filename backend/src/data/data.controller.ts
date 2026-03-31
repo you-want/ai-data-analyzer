@@ -5,6 +5,7 @@ import {
   UploadedFile,
   BadRequestException,
   Body,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { parse } from 'fast-csv';
@@ -13,6 +14,8 @@ import { AnalysisService } from '../analysis/analysis.service';
 
 @Controller('data')
 export class DataController {
+  private readonly logger = new Logger(DataController.name);
+
   constructor(private readonly analysisService: AnalysisService) {}
 
   @Post('upload/csv')
@@ -30,6 +33,10 @@ export class DataController {
       throw new BadRequestException('请上传 CSV 文件');
     }
 
+    this.logger.log(
+      `接收到文件上传: ${file.originalname}, 大小: ${file.size} bytes`,
+    );
+
     const rows: Record<string, string>[] = [];
 
     // 使用 fast-csv 流式解析内存中的 buffer
@@ -44,6 +51,8 @@ export class DataController {
       stream.write(file.buffer);
       stream.end();
     });
+
+    this.logger.log(`文件解析成功，共解析 ${rows.length} 行数据`);
 
     // 如果用户传了 prompt 参数，就调用 Agent 进行分析
     if (prompt) {
