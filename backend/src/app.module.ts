@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
 import { OpenAIModule } from './openai/openai.module';
 import { DataModule } from './data/data.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -30,6 +31,12 @@ import { DataModule } from './data/data.module';
         retryAttempts: 15,
         retryDelay: 3000,
       }),
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
     }),
     AnalysisResultsModule,
     OpenAIModule,

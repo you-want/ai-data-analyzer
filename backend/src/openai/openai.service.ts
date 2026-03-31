@@ -26,26 +26,80 @@ export class OpenAIService implements ILLMService {
     });
   }
 
-  /**
-   * 发送聊天请求
-   * @param content 用户输入的内容
-   * @param model 模型名称，默认为 gpt-3.5-turbo
-   */
-  async chat(content: string, model?: string): Promise<string> {
+  async chat(prompt: string, model?: string): Promise<string> {
     try {
-      this.logger.debug(`Sending request to OpenAI...`);
-      const completion = await this.openai.chat.completions.create({
-        messages: [{ role: 'user', content }],
-        model: model || this.defaultModel,
+      const targetModel =
+        model ||
+        this.configService.get<string>('OPENAI_MODEL') ||
+        'gpt-3.5-turbo';
+
+      this.logger.debug(`Sending prompt to OpenAI (Model: ${targetModel})`);
+      this.logger.debug(`Prompt content: ${prompt.substring(0, 100)}...`);
+
+      const response = await this.openai.chat.completions.create({
+        model: targetModel,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的数据分析AI助手。',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
       });
 
-      const responseContent = completion.choices[0]?.message?.content || '';
-      this.logger.debug(`Received response from OpenAI:\n${responseContent}`);
-      return responseContent;
+      const result = response.choices[0]?.message?.content || '';
+      this.logger.debug(`OpenAI Response: ${result.substring(0, 100)}...`);
+      return result;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`OpenAI API call failed: ${errorMessage}`);
+      this.logger.error('Failed to call OpenAI API', error);
+      throw error;
+    }
+  }
+
+  async chatStream(
+    prompt: string,
+    model?: string,
+  ): Promise<AsyncIterable<string>> {
+    try {
+      const targetModel =
+        model ||
+        this.configService.get<string>('OPENAI_MODEL') ||
+        'gpt-3.5-turbo';
+
+      this.logger.debug(
+        `Sending streaming prompt to OpenAI (Model: ${targetModel})`,
+      );
+
+      const response = await this.openai.chat.completions.create({
+        model: targetModel,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的数据分析AI助手。',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: true,
+      });
+
+      return {
+        async *[Symbol.asyncIterator]() {
+          for await (const chunk of response) {
+            const content = chunk.choices[0]?.delta?.content;
+            if (content) {
+              yield content;
+            }
+          }
+        },
+      };
+    } catch (error) {
+      this.logger.error('Failed to call OpenAI API for streaming', error);
       throw error;
     }
   }

@@ -103,6 +103,20 @@ export class AnalysisService {
     return this.llmService.chat(prompt);
   }
 
+  async analyzeTextStream(rawContent: string): Promise<AsyncIterable<string>> {
+    this.logger.debug(
+      `Streaming analysis for text: ${rawContent.substring(0, 100)}...`,
+    );
+    const prompt = `请分析以下数据：\n${rawContent}`;
+
+    if (this.llmService.chatStream) {
+      return this.llmService.chatStream(prompt);
+    }
+
+    // 如果底层的 LLMService 没有实现 chatStream，做个兜底
+    throw new Error('当前 LLM 服务不支持流式输出');
+  }
+
   /**
    * 结合预处理进行综合数据分析
    * 支持传入纯文本或结构化 JSON 数组（CSV 解析结果）
