@@ -127,4 +127,25 @@ export class AnalysisController {
       },
     };
   }
+
+  // 接收用户对 AI 分析结果的反馈 (RLHF 基础)
+  @Post('feedback')
+  @HttpCode(HttpStatus.OK)
+  submitFeedback(
+    @Body()
+    payload: {
+      insightId: string;
+      type: 'up' | 'down';
+      comment?: string;
+    },
+  ) {
+    // 在实际项目中，这里会将反馈存入数据库，关联到具体的 AnalysisResult
+    console.log(
+      `[Feedback Received] InsightID: ${payload.insightId}, Type: ${payload.type}, Comment: ${payload.comment || 'N/A'}`,
+    );
+    return {
+      success: true,
+      message: '反馈已记录，感谢您的评价！',
+    };
+  }
 }

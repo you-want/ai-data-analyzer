@@ -1,6 +1,7 @@
 "use client"; // 声明为客户端组件
 
 import { useState } from 'react';
+import AIInsightPanel from './AIInsightPanel';
 
 // 定义分析结果的类型接口
 interface AnalysisResult {
@@ -53,12 +54,14 @@ export default function AnalysisForm() {
         {loading ? 'AI 分析中...' : '开始智能分析'}
       </button>
 
-      {/* 渲染后端返回的结构化 JSON 数据 */}
+      {/* 渲染后端返回的结构化 JSON 数据，引入 AI 洞察面板与反馈 */}
       {result && result.success && result.data && (
-        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md text-black dark:text-blue-100">
-          <h3 className="font-bold mb-2 text-blue-900 dark:text-blue-200">分析摘要：</h3>
-          <p>{result.data.summary}</p>
-          <p className="text-sm text-gray-500 dark:text-blue-300/70 mt-2">信心指数: {result.data.confidenceScore}</p>
+        <div className="mt-4">
+          <AIInsightPanel 
+            summary={result.data.summary} 
+            confidenceScore={result.data.confidenceScore} 
+            insightId="demo-insight-123" // 模拟 ID，实际应使用 result.data.id
+          />
         </div>
       )}
       
