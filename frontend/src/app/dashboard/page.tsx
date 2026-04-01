@@ -5,6 +5,8 @@ import TaskStatusViewer from '@/components/TaskStatusViewer';
 import MetricCard from '@/components/MetricCard';
 import AdvancedSalesChart from '@/components/charts/AdvancedSalesChart';
 import DataGalaxy3D from '@/components/charts/DataGalaxy3D';
+import UserRadarChart from '@/components/charts/UserRadarChart';
+import KnowledgeGraphChart from '@/components/charts/KnowledgeGraphChart';
 
 export default async function DashboardPage() {
   // 服务端获取基础状态 (极快)
@@ -71,13 +73,22 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* 数据可视化区域：2D ECharts 与 3D Three.js */}
+      {/* 数据可视化区域 1：基础趋势与 3D 概览 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[450px]">
         {/* 左侧：2D 复杂图表 (ECharts) */}
         <AdvancedSalesChart />
 
         {/* 右侧：3D 数据星系 (Three.js / React Three Fiber) */}
         <DataGalaxy3D />
+      </div>
+
+      {/* 数据可视化区域 2：进阶多维分析与图谱 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[450px]">
+        {/* 左侧：多维特征雷达图 (ECharts) */}
+        <UserRadarChart />
+
+        {/* 右侧：AI 知识图谱 (ECharts Force Graph) */}
+        <KnowledgeGraphChart />
       </div>
 
       {/* 业务功能操作区 */}

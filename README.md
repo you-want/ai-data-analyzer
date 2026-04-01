@@ -28,9 +28,14 @@
 - **AI 集成**: OpenAI SDK
 
 ### Frontend (前端)
-- *（即将在此补充前端技术栈如 Next.js, TailwindCSS, Echarts 等）*
+- **框架**: [Next.js](https://nextjs.org/) (App Router) + React 19
+- **语言**: TypeScript
+- **样式**: TailwindCSS v4
+- **数据获取**: SWR
+- **2D 可视化**: Apache ECharts (`echarts-for-react`) + Recharts
+- **3D 可视化**: Three.js + React Three Fiber (`@react-three/fiber`, `@react-three/drei`)
 
-## 📦 快速开始 (后端)
+## 📦 快速开始
 
 ### 1. 环境准备
 确保你的本地安装了：
@@ -49,6 +54,8 @@ docker run --name my-redis -p 6379:6379 -d redis
 ```
 
 ### 3. 安装依赖与配置
+
+#### 后端配置
 ```bash
 cd backend
 pnpm install
@@ -67,13 +74,28 @@ DATABASE_NAME=ai_analyzer
 OPENAI_API_KEY=your_api_key_here
 ```
 
-### 4. 启动服务
+#### 前端配置
 ```bash
+cd frontend
+pnpm install
+```
+
+### 4. 启动服务
+
+**启动后端服务：**
+```bash
+cd backend
 pnpm run start:dev
 ```
 *注：项目中已集成 `kill-port`，启动时会自动清理占用的 `3001` 端口，提供丝滑的开发体验。*
-
 服务将运行在：`http://localhost:3001`
+
+**启动前端服务：**
+```bash
+cd frontend
+pnpm run dev
+```
+前端服务将运行在：`http://localhost:3000`
 
 ## 🤝 参与贡献
 
