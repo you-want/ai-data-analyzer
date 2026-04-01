@@ -8,6 +8,8 @@ import { AnalysisResultsModule } from './analysis-results/analysis-results.modul
 import { OpenAIModule } from './openai/openai.module';
 import { DataModule } from './data/data.module';
 import { BullModule } from '@nestjs/bullmq';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -15,6 +17,22 @@ import { BullModule } from '@nestjs/bullmq';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const store = await redisStore({
+          socket: {
+            host: configService.get('REDIS_HOST', 'localhost'),
+            port: Number(configService.get('REDIS_PORT', 6379)),
+          },
+        });
+        return {
+          store,
+          ttl: 3600000, // 默认 1 小时缓存 (ms)
+        };
+      },
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

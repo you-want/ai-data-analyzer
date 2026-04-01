@@ -1,5 +1,8 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import type { ILLMService } from '../openai/llm.interface';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import * as crypto from 'crypto';
 
 const AGENT_SYSTEM_PROMPT = `
   你是一个专业的数据分析 AI Agent。请根据用户的请求和提供的数据，逐步进行分析。
@@ -28,7 +31,15 @@ export class AnalysisService {
   // 无论底层是 OpenAI 还是 Claude，这里都能通过依赖注入 Token 无缝接收
   constructor(
     @Inject('LLM_SERVICE') private readonly llmService: ILLMService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  /**
+   * 工具函数：生成 Hash，用于作为缓存的 Key
+   */
+  private generateHash(content: string): string {
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
 
   /**
    * 将 JSON 数组转换为 Markdown 表格，大幅节省 Token
@@ -89,18 +100,35 @@ export class AnalysisService {
   }
 
   /**
-   * 分析文本数据
+   * 分析文本数据 (引入 Redis 缓存优化)
    */
   async analyzeText(rawContent: string): Promise<string> {
     // 1. 数据预处理
     const cleanContent = this.preprocessText(rawContent);
     this.logger.debug(`预处理完成，文本长度: ${cleanContent.length}`);
 
-    // 2. 构建 Prompt
+    // 2. 检查缓存 (缓存策略：根据内容哈希值判断是否已经分析过)
+    const cacheKey = `analysis:text:${this.generateHash(cleanContent)}`;
+
+    const cachedResult: string | undefined =
+      await this.cacheManager.get(cacheKey);
+
+    if (cachedResult) {
+      this.logger.log(`🎯 命中缓存，直接返回之前的分析结果！Key: ${cacheKey}`);
+      return cachedResult;
+    }
+
+    // 3. 构建 Prompt
     const prompt = `你是一个专业的数据分析专家。请仔细阅读并分析以下文本数据，提取出关键信息、主要观点，并给出你的专业总结或建议：\n\n"""\n${cleanContent}\n"""`;
 
-    // 3. 调用 AI 服务
-    return this.llmService.chat(prompt);
+    // 4. 调用 AI 服务
+    const aiResult = await this.llmService.chat(prompt);
+
+    // 5. 存入 Redis 缓存，设置过期时间为 1 小时 (3600000ms)
+    await this.cacheManager.set(cacheKey, aiResult, 3600000);
+    this.logger.log(`💾 结果已存入缓存。Key: ${cacheKey}`);
+
+    return aiResult;
   }
 
   async analyzeTextStream(rawContent: string): Promise<AsyncIterable<string>> {
@@ -175,7 +203,7 @@ export class AnalysisService {
         const result = JSON.parse(cleanedResponse);
 
         // 简单的结构验证
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
         if (
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           !result.summary ||
