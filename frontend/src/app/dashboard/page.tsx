@@ -3,10 +3,21 @@ import AnalysisForm from '@/components/AnalysisForm';
 import UploadForm from '@/components/UploadForm';
 import TaskStatusViewer from '@/components/TaskStatusViewer';
 import MetricCard from '@/components/MetricCard';
-import AdvancedSalesChart from '@/components/charts/AdvancedSalesChart';
-import DataGalaxy3D from '@/components/charts/DataGalaxy3D';
-import UserRadarChart from '@/components/charts/UserRadarChart';
-import KnowledgeGraphChart from '@/components/charts/KnowledgeGraphChart';
+import dynamic from 'next/dynamic';
+
+// 动态导入重型图表组件，避免阻塞首屏渲染
+const AdvancedSalesChart = dynamic(() => import('@/components/charts/AdvancedSalesChart'), {
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">图表加载中...</div>,
+});
+const DataGalaxy3D = dynamic(() => import('@/components/charts/DataGalaxy3D'), {
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">3D引擎加载中...</div>,
+});
+const UserRadarChart = dynamic(() => import('@/components/charts/UserRadarChart'), {
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">雷达图加载中...</div>,
+});
+const KnowledgeGraphChart = dynamic(() => import('@/components/charts/KnowledgeGraphChart'), {
+  loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">知识图谱加载中...</div>,
+});
 
 export default async function DashboardPage() {
   // 服务端获取基础状态 (极快)
