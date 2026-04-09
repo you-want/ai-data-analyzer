@@ -153,10 +153,14 @@ export class AnalysisController {
       comment?: string;
     },
   ) {
-    // 在实际项目中，这里会将反馈存入数据库，关联到具体的 AnalysisResult
-    console.log(
-      `[Feedback Received] InsightID: ${payload.insightId}, Type: ${payload.type}, Comment: ${payload.comment || 'N/A'}`,
+    // 记录用户对 AI 洞察的评价
+    Logger.log(
+      `[用户反馈] 洞察ID: ${payload.insightId}, 评价: ${payload.type}, 补充建议: ${payload.comment || '无'}`,
     );
+
+    // 在生产环境中，此处应将 payload 存入数据库 (如 AnalysisResult 表)
+    // 并定期拉取 type === 'down' 的记录，交给人工复核团队 (Human-in-the-loop)
+
     return {
       success: true,
       message: '反馈已记录，感谢您的评价！',

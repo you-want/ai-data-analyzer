@@ -188,9 +188,7 @@ export class AnalysisService {
     let attempt = 0;
     while (attempt < maxRetries) {
       try {
-        this.logger.debug(
-          `尝试结构化输出 (第 ${attempt + 1}/${maxRetries} 次)`,
-        );
+        this.logger.log(`发起结构化分析请求 (第 ${attempt + 1} 次尝试)...`);
         const response = await this.llmService.chat(finalPrompt);
 
         // 尝试解析 JSON
@@ -208,8 +206,6 @@ export class AnalysisService {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           !result.summary ||
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          typeof result.confidenceScore !== 'number' ||
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           !Array.isArray(result.keyFindings)
         ) {
           throw new Error('AI 返回的 JSON 结构不符合预期');
@@ -217,18 +213,18 @@ export class AnalysisService {
 
         this.logger.log(
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          `结构化输出解析成功！信心分数: ${result.confidenceScore}`,
+          `🎯 结构化输出解析成功！信心分数: ${result.confidenceScore}`,
         );
         return result;
       } catch (error) {
         attempt++;
         const err = error as Error;
         this.logger.warn(
-          `结构化输出解析失败 (第 ${attempt} 次): ${err.message}`,
+          `⚠️ 结构化输出解析失败 (第 ${attempt} 次): ${err.message}`,
         );
 
         if (attempt >= maxRetries) {
-          this.logger.error(`达到最大重试次数 (${maxRetries})，放弃。`);
+          this.logger.error(`❌ 达到最大重试次数 (${maxRetries})，彻底放弃。`);
           throw new Error('AI 输出格式始终错误，请稍后重试');
         }
       }
@@ -313,11 +309,11 @@ export class AnalysisService {
 
     while (iterations < MAX_ITERATIONS) {
       iterations++;
-      this.logger.debug(`Agent Iteration ${iterations}...`);
+      this.logger.debug(`🤖 Agent 迭代轮次: ${iterations}...`);
 
       // 1. 调用大模型
       const aiResponse = await this.llmService.chat(conversationHistory);
-      this.logger.debug(`AI Response:\n${aiResponse}`);
+      this.logger.debug(`🧠 AI 思考过程:\n${aiResponse}`);
       conversationHistory += `\n${aiResponse}\n`; // 记录 AI 的回复
 
       // 2. 解析 AI 的意图：是否得出了最终结论？
@@ -335,15 +331,13 @@ export class AnalysisService {
         const actionInput = inputMatch[1].trim();
 
         if (action !== 'NONE') {
-          this.logger.debug(
-            `Executing Tool: ${action} with input: ${actionInput}`,
-          );
+          this.logger.debug(`🛠️ 执行工具: [${action}]，参数: ${actionInput}`);
 
           // 4. 执行本地工具
           const observation = this.executeTool(action, actionInput, rawData);
 
           // 5. 将观察结果追加到上下文中，进入下一次循环
-          const observationLog = `Observation: ${observation}`;
+          const observationLog = `👁️ 工具观察结果: ${observation}`;
           conversationHistory += `${observationLog}\n`;
           this.logger.debug(observationLog);
         }
