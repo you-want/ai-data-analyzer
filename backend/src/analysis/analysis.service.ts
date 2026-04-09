@@ -200,10 +200,10 @@ export class AnalysisService {
 
     // 1. 检查缓存
     const cachedResult = await this.cacheManager.get(CACHE_KEY);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
     if (cachedResult) {
       this.logger.log(`🎯 命中缓存：直接返回缓存中的结构化分析结果`);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
       return cachedResult;
     }
 
