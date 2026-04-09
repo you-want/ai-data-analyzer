@@ -1,5 +1,5 @@
-# 使用轻量级的 Node.js 18 Alpine 镜像作为构建环境
-FROM node:18-alpine AS builder
+# 使用轻量级的 Node.js 22 Alpine 镜像作为构建环境
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # 启用 pnpm
@@ -16,7 +16,7 @@ COPY . .
 RUN pnpm run build
 
 # 生产环境镜像
-FROM node:18-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # 生产环境仅需安装生产依赖
