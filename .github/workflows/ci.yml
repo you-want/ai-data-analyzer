@@ -1,0 +1,75 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Use Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        cache: 'pnpm'
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Lint Backend
+      working-directory: ./backend
+      run: pnpm run lint
+
+    - name: Test Backend
+      working-directory: ./backend
+      run: pnpm run test
+
+    - name: Build Backend
+      working-directory: ./backend
+      run: pnpm run build
+
+    - name: Lint Frontend
+      working-directory: ./frontend
+      run: pnpm run lint
+
+    - name: Build Frontend
+      working-directory: ./frontend
+      run: pnpm run build
+
+  docker-build:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Backend Image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: false # 仅构建测试，若需发布改为 true 并配置 DockerHub 登录
+        tags: ai-data-analyzer-backend:latest
+
+    - name: Build Frontend Image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: false
+        tags: ai-data-analyzer-frontend:latest
