@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AnalysisService } from './analysis.service';
+import * as crypto from 'crypto';
 import { AnalyzeTextDto } from './dto/analyze-text.dto';
 import { Observable } from 'rxjs';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -109,11 +110,36 @@ export class AnalysisController {
 
   @Post('structured')
   @HttpCode(HttpStatus.OK)
-  async analyzeStructured(@Body() payload: { prompt: string }) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const result = await this.analysisService.analyzeWithStructuredOutput(
-      payload.prompt,
-    );
+  async analyzeStructured(
+    @Body() payload: { prompt: string; userId?: string },
+  ) {
+    // 如果没有传入 userId，则使用一个随机 ID 兜底
+    const userId = payload.userId || Math.random().toString(36).substring(7);
+
+    // 基于用户 ID 进行稳定的哈希路由，确保同一个用户始终命中同一个实验组
+    const userHash = crypto.createHash('md5').update(userId).digest('hex');
+    const hashInt = parseInt(userHash.substring(0, 8), 16);
+    const isExperimentGroup = hashInt % 100 < 20; // 20% 的流量进入实验组
+
+    let result;
+
+    if (isExperimentGroup) {
+      Logger.log(`[A/B Test] User ${userId} 命中实验组 (Prompt V2)`);
+      // 传递标识，让 Service 使用实验版 Prompt 和模型
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      result = await this.analysisService.analyzeWithStructuredOutput(
+        payload.prompt,
+        { useExperiment: true },
+      );
+    } else {
+      Logger.log(`[A/B Test] User ${userId} 命中对照组 (Prompt V1)`);
+      // 维持原有稳定逻辑
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      result = await this.analysisService.analyzeWithStructuredOutput(
+        payload.prompt,
+        { useExperiment: false },
+      );
+    }
 
     return {
       success: true,

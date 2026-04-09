@@ -35,6 +35,23 @@ export class AnalysisService {
   ) {}
 
   /**
+   * 动态获取 Agent System Prompt (带缓存)
+   */
+  async getActiveAgentPrompt(): Promise<string> {
+    const CACHE_KEY = 'config:prompt:agent_v_active';
+    const cachedPrompt = await this.cacheManager.get<string>(CACHE_KEY);
+
+    if (cachedPrompt) {
+      return cachedPrompt;
+    }
+
+    // 默认 fallback prompt (在真实场景中，这里应该从数据库拉取)
+    const fallbackPrompt = AGENT_SYSTEM_PROMPT;
+    await this.cacheManager.set(CACHE_KEY, fallbackPrompt, 3600000); // 缓存 1 小时
+    return fallbackPrompt;
+  }
+
+  /**
    * 工具函数：生成 Hash，用于作为缓存的 Key
    */
   private generateHash(content: string): string {
@@ -174,8 +191,22 @@ export class AnalysisService {
    */
   async analyzeWithStructuredOutput(
     prompt: string,
-    maxRetries = 3,
+    options?: { maxRetries?: number; useExperiment?: boolean },
   ): Promise<any> {
+    const maxRetries = options?.maxRetries ?? 3;
+    const useExperiment = options?.useExperiment ?? false;
+    let attempt = 0;
+    const CACHE_KEY = this.generateHash(prompt + (useExperiment ? '_exp' : ''));
+
+    // 1. 检查缓存
+    const cachedResult = await this.cacheManager.get(CACHE_KEY);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    if (cachedResult) {
+      this.logger.log(`🎯 命中缓存：直接返回缓存中的结构化分析结果`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return cachedResult;
+    }
+
     const systemPrompt = `你是一个专业的数据分析专家。请仔细分析数据，并**严格**按照以下 JSON 格式输出，不要输出任何额外的文本：
 {
   "summary": "对数据的简短摘要分析",
@@ -183,12 +214,20 @@ export class AnalysisService {
   "keyFindings": ["发现1", "发现2"]
 }`;
 
-    const finalPrompt = `${systemPrompt}\n\n用户请求:\n${prompt}`;
+    // 模拟实验组使用不同的 Prompt 后缀
+    const finalSystemPrompt = useExperiment
+      ? systemPrompt + '\n[实验组标识: 请确保语气更加活泼简练。]'
+      : systemPrompt;
 
-    let attempt = 0;
+    const finalPrompt = `${finalSystemPrompt}\n\n用户请求:\n${prompt}`;
+
     while (attempt < maxRetries) {
       try {
-        this.logger.log(`发起结构化分析请求 (第 ${attempt + 1} 次尝试)...`);
+        this.logger.log(
+          `🚀 发起结构化分析请求 (第 ${attempt + 1} 次尝试, 实验组: ${useExperiment})...`,
+        );
+
+        // 调用大模型
         const response = await this.llmService.chat(finalPrompt);
 
         // 尝试解析 JSON
