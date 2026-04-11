@@ -7,15 +7,24 @@
 
 ## 🗺️ 课程架构与技术蓝图
 
-本项目配套了 5 大模块共 25 节详细的图文教程。以下是本项目的全栈架构思维导图：
+本项目配套了 5 大模块共 25 节详细的图文教程。以下是本项目的全栈架构思维导图与相关架构图：
 
+### 课程架构与技术蓝图
 ![课程架构与技术蓝图](./course-architecture.png)
+
+### 整体基础设施图
+![整体基础设施图](./Infrastructure.png)
+
+### 组件交互环路
+![组件交互环路](./component-interactions.png)
 
 ## 📚 教程与系列文章
 
-本项目配有详细的从零到一构建教程，强烈建议结合教程学习项目源码：
+本项目配有详细的从零到一构建教程及相关文档，强烈建议结合教程学习项目源码：
 
 👉 **[使用 Next.js 与 Nest.js 构建自动化数据分析 AI Agent（微信公众号系列文章集合）](https://mp.weixin.qq.com/mp/appmsgalbum?action=getalbum&__biz=MzU5MjM4MTA5MA==&scene=1&album_id=4431259597206634496&count=3#wechat_redirect)**
+
+👉 **[DeepWiki 项目文档：AI Data Analyzer](https://deepwiki.com/you-want/ai-data-analyzer)**
 
 ## 🚀 核心特性
 
