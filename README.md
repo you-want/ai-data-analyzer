@@ -10,13 +10,13 @@
 本项目配套了 5 大模块共 25 节详细的图文教程。以下是本项目的全栈架构思维导图与相关架构图：
 
 ### 课程架构与技术蓝图
-![课程架构与技术蓝图](./course-architecture.png)
+![课程架构与技术蓝图](./public/course-architecture.png)
 
 ### 整体基础设施图
-![整体基础设施图](./Infrastructure.png)
+![整体基础设施图](./public/Infrastructure.png)
 
 ### 组件交互环路
-![组件交互环路](./component-interactions.png)
+![组件交互环路](./public/component-interactions.png)
 
 ## 📚 教程与系列文章
 
