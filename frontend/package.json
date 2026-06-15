@@ -19,6 +19,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
     "swr": "^2.4.1",
     "three": "^0.183.2"
   },

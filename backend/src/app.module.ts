@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
 import { OpenAIModule } from './openai/openai.module';
 import { DataModule } from './data/data.module';
+import { MultiAgentModule } from './multi-agent/multi-agent.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -59,6 +60,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     AnalysisResultsModule,
     OpenAIModule,
     DataModule,
+    MultiAgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

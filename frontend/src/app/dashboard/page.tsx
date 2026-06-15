@@ -3,6 +3,7 @@ import AnalysisForm from '@/components/AnalysisForm';
 import UploadForm from '@/components/UploadForm';
 import TaskStatusViewer from '@/components/TaskStatusViewer';
 import MetricCard from '@/components/MetricCard';
+import MultiAgentForm from '@/components/MultiAgentForm';
 import dynamic from 'next/dynamic';
 
 // 动态导入重型图表组件，避免阻塞首屏渲染
@@ -85,7 +86,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* 数据可视化区域 1：基础趋势与 3D 概览 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[450px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-112.5">
         {/* 左侧：2D 复杂图表 (ECharts) */}
         <AdvancedSalesChart />
 
@@ -94,7 +95,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* 数据可视化区域 2：进阶多维分析与图谱 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[450px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-112.5">
         {/* 左侧：多维特征雷达图 (ECharts) */}
         <UserRadarChart />
 
@@ -128,6 +129,15 @@ export default async function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* 多智能体协作分析区 */}
+      <section className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+        <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-zinc-100">多智能体协作分析</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">
+          启动 Router、Coder、Viz、Reviewer 四个 Agent 协同工作，自动拆解任务、生成图表、审阅结果。
+        </p>
+        <MultiAgentForm />
+      </section>
     </div>
   );
 }
