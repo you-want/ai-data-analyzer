@@ -7,7 +7,12 @@
 export type AgentRole = 'router' | 'data_coder' | 'viz' | 'reviewer' | 'writer';
 
 // 任务状态枚举
-export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+export type TaskStatus =
+  | 'pending'
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'skipped';
 
 // 运行状态枚举（状态机）
 export enum RunStatus {
@@ -217,6 +222,7 @@ export interface AgentProgressEvent {
 export interface AgentTaskUpdateEvent {
   analysisId: string;
   taskId: string;
+  taskType: string;
   status: TaskStatus;
   outputs?: Record<string, unknown>;
   error?: { message: string; code?: string };

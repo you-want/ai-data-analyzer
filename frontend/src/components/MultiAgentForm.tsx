@@ -4,11 +4,21 @@ import { useState } from 'react';
 import { io } from 'socket.io-client';
 import TaskStatusViewer from './TaskStatusViewer';
 
+interface AgentTask {
+  id: string;
+  type: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+  inputs?: Record<string, unknown>;
+  outputs?: Record<string, unknown>;
+  error?: { message: string; code?: string };
+}
+
 export default function MultiAgentForm() {
   const [prompt, setPrompt] = useState('');
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -17,8 +27,8 @@ export default function MultiAgentForm() {
     setIsAnalyzing(true);
     setError(null);
     setAnalysisId(null);
+    setTasks([]);
 
-    // 示例数据
     const sampleData = [
       { month: '2024-01', sales: 100000, region: '北京' },
       { month: '2024-02', sales: 120000, region: '北京' },
@@ -30,31 +40,50 @@ export default function MultiAgentForm() {
       { month: '2024-04', sales: 160000, region: '上海' },
     ];
 
-    // 使用 WebSocket 连接
     const socket = io('http://localhost:3001/multi-agent', {
       transports: ['websocket'],
     });
 
     socket.on('connect', () => {
       console.log('WebSocket connected');
-      
-      // 发送分析请求
       socket.emit('start_multi_analysis', {
         prompt,
         data: sampleData,
-        options: {
-          maxSteps: 10,
-          enableReview: true,
-          enableCharts: true,
-        },
+        options: { maxSteps: 10, enableReview: true, enableCharts: true },
       });
     });
 
-    socket.on('agent_progress', (event) => {
+    socket.on('agent_progress', (event: { analysisId?: string; status: string; message: string }) => {
       console.log('Progress:', event);
       if (!analysisId && event.analysisId) {
         setAnalysisId(event.analysisId);
       }
+    });
+
+    socket.on('task_update', (event: { taskId: string; status: string; taskType?: string; outputs?: Record<string, unknown>; error?: { message: string; code?: string } }) => {
+      console.log('Task update:', event);
+      const taskStatus = event.status as 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+      setTasks(prev => {
+        const existingIndex = prev.findIndex(t => t.id === event.taskId);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            status: taskStatus,
+            outputs: event.outputs,
+            error: event.error,
+          };
+          return updated;
+        }
+        return [...prev, {
+          id: event.taskId,
+          type: event.taskType || 'unknown',
+          status: taskStatus,
+          inputs: {},
+          outputs: event.outputs,
+          error: event.error,
+        }];
+      });
     });
 
     socket.on('analysis_complete', (result) => {
@@ -105,25 +134,9 @@ export default function MultiAgentForm() {
         >
           {isAnalyzing ? (
             <span className="flex items-center justify-center gap-2">
-              <svg
-                className="animate-spin h-5 w-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
               多智能体协作分析中...
             </span>
@@ -140,7 +153,7 @@ export default function MultiAgentForm() {
       )}
 
       {analysisId && (
-        <TaskStatusViewer mode="multi" analysisId={analysisId} />
+        <TaskStatusViewer mode="multi" analysisId={analysisId} tasks={tasks} />
       )}
     </div>
   );

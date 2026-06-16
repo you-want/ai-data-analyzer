@@ -42,17 +42,29 @@ interface TaskStatusViewerProps {
   jobId?: string;
   analysisId?: string;
   mode?: 'single' | 'multi';
+  tasks?: Array<{
+    id: string;
+    type: string;
+    status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+    inputs?: Record<string, unknown>;
+    outputs?: Record<string, unknown>;
+    error?: { message: string; code?: string };
+  }>;
 }
 
 export default function TaskStatusViewer({ 
   jobId, 
   analysisId, 
-  mode = 'single' 
+  mode = 'single',
+  tasks: externalTasks 
 }: TaskStatusViewerProps) {
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [internalTasks, setInternalTasks] = useState<AgentTask[]>([]);
   const [currentStatus, setCurrentStatus] = useState<string>('');
   const [progressMessages, setProgressMessages] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
+
+  // 使用外部传入的任务或内部状态的任务
+  const tasks = externalTasks && externalTasks.length > 0 ? externalTasks : internalTasks;
 
   // 单任务模式：使用原有的轮询方式
   const { data, error, isLoading } = useSWR(
@@ -77,22 +89,25 @@ export default function TaskStatusViewer({
         setProgressMessages(prev => [...prev, `[${event.status}] ${event.message}`]);
       });
 
-      newSocket.on('task_update', (event: AgentTaskUpdateEvent) => {
-        setTasks(prev => {
-          const existingIndex = prev.findIndex(t => t.id === event.taskId);
-          if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              status: event.status,
-              outputs: event.outputs,
-              error: event.error,
-            };
-            return updated;
-          }
-          return prev;
+      // 只有在没有外部任务时才更新内部状态
+      if (!externalTasks || externalTasks.length === 0) {
+        newSocket.on('task_update', (event: AgentTaskUpdateEvent) => {
+          setInternalTasks(prev => {
+            const existingIndex = prev.findIndex(t => t.id === event.taskId);
+            if (existingIndex >= 0) {
+              const updated = [...prev];
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                status: event.status,
+                outputs: event.outputs,
+                error: event.error,
+              };
+              return updated;
+            }
+            return prev;
+          });
         });
-      });
+      }
 
       newSocket.on('analysis_complete', () => {
         setCurrentStatus('DONE');
@@ -110,7 +125,7 @@ export default function TaskStatusViewer({
         newSocket.close();
       };
     }
-  }, [mode, analysisId]);
+  }, [mode, analysisId, externalTasks]);
 
   // 单任务模式渲染
   if (mode === 'single') {

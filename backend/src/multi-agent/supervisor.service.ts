@@ -304,6 +304,26 @@ export class Supervisor {
             // 报告生成在 generateReport 中处理
             return { success: true, data: {} };
 
+          case 'review': {
+            const result = await this.reviewerAgent.run(
+              {
+                task,
+                dataResults: context.artifacts,
+                charts: (context.artifacts['charts'] as ChartConfig[]) || [],
+              },
+              context,
+            );
+            if (result.success) {
+              return {
+                success: true,
+                data: result.data,
+                summary: result.summary,
+              };
+            }
+            lastError = new Error(result.error?.message);
+            break;
+          }
+
           default:
             return {
               success: false,
@@ -538,6 +558,7 @@ ${context.userPrompt}
     callback({
       analysisId: context.analysisId,
       taskId: task.id,
+      taskType: task.type,
       status: task.status,
       outputs: task.outputs,
       error: task.error,
