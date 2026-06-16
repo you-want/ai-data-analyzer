@@ -9,4 +9,12 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('health')
+  health(): { status: string; message: string } {
+    return {
+      status: 'ok',
+      message: 'AI Data Analyzer service is up and running!',
+    };
+  }
 }

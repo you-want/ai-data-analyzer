@@ -62,13 +62,27 @@
 - Docker (用于快速启动数据库和 Redis)
 
 ### 2. 启动依赖服务 (PostgreSQL & Redis)
-你可以使用 Docker 快速启动所需的中间件：
-```bash
-# 启动 PostgreSQL
-docker run --name ai_analyzer_postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=ai_analyzer -p 5432:5432 -d postgres:15-alpine
 
-# 启动 Redis (用于 BullMQ)
-docker run --name my-redis -p 6379:6379 -d redis
+项目根目录已有 `docker-compose.yml`，直接用 Docker Compose 启动即可。
+
+**首次启动（创建容器）：**
+```bash
+# 在项目根目录执行
+docker compose up -d
+```
+这会自动创建并启动 PostgreSQL（`ai_analyzer_postgres`）和 Redis（`ai_analyzer_redis`）两个容器。
+
+**后续启动（容器已存在）：**
+```bash
+docker compose up -d
+# 或者
+docker start ai_analyzer_postgres ai_analyzer_redis
+```
+
+**停止服务：**
+```bash
+docker compose down        # 停止并移除容器（数据保留在 volume 中）
+docker compose stop        # 仅停止容器（不移除）
 ```
 
 ### 3. 安装依赖与配置
@@ -84,12 +98,26 @@ pnpm install
 # 数据库配置
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-DATABASE_USER=postgres
-DATABASE_PASSWORD=password
-DATABASE_NAME=ai_analyzer
+DATABASE_USER=rain9_ai_data
+DATABASE_PASSWORD=rain9_ai_data_admin
+DATABASE_NAME=ai_analysis_db
 
-# AI 模型配置 (例如使用 OpenAI)
-OPENAI_API_KEY=your_api_key_here
+# AI 模型配置 (使用阿里云通义千问)
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_API_KEY=your_api_key_here  # 替换为你的阿里云 API Key
+OPENAI_MODEL=qwen3.7-plus
+
+# 或者使用本地 Ollama 模型（取消注释以下三行）
+# OPENAI_API_KEY=ollama
+# OPENAI_BASE_URL=http://localhost:11434/v1
+# OPENAI_MODEL=qwen2.5
+```
+
+**注意**：数据库用户名和密码需要与 `docker-compose.yml` 中的配置一致。项目根目录的 `.env` 文件中已配置：
+```env
+POSTGRES_USER=rain9_ai_data
+POSTGRES_PASSWORD=rain9_ai_data_admin
+POSTGRES_DB=ai_analysis_db
 ```
 
 #### 前端配置
@@ -100,20 +128,119 @@ pnpm install
 
 ### 4. 启动服务
 
-**启动后端服务：**
+**启动后端服务（新终端窗口）：**
 ```bash
 cd backend
 pnpm run start:dev
 ```
-*注：项目中已集成 `kill-port`，启动时会自动清理占用的 `3001` 端口，提供丝滑的开发体验。*
+*注：项目中已集成 `kill-port`，启动时会自动清理占用的 `3001` 端口。*
 服务将运行在：`http://localhost:3001`
 
-**启动前端服务：**
+**启动前端服务（新终端窗口）：**
 ```bash
 cd frontend
 pnpm run dev
 ```
 前端服务将运行在：`http://localhost:3000`
+
+### 5. 验证服务状态
+
+**检查后端健康状态：**
+```bash
+curl http://localhost:3001/health
+```
+
+**检查多智能体服务：**
+```bash
+curl -X POST http://localhost:3001/multi-agent/health
+```
+
+**访问前端界面：**
+打开浏览器访问 `http://localhost:3000/dashboard`
+
+### 6. 测试多智能体功能
+
+**方式一：通过前端界面**
+1. 访问 `http://localhost:3000/dashboard`
+2. 滚动到页面底部的"多智能体协作分析"区域
+3. 输入分析请求（如"分析销售趋势并找出异常月份"）
+4. 点击"开始多智能体分析"按钮
+5. 观察实时任务状态更新和执行日志
+
+**方式二：通过 API 测试**
+```bash
+curl -X POST http://localhost:3001/multi-agent/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "分析销售趋势并找出异常月份",
+    "data": [
+      {"month": "2024-01", "sales": 100000, "region": "北京"},
+      {"month": "2024-02", "sales": 120000, "region": "北京"},
+      {"month": "2024-03", "sales": 80000, "region": "北京"},
+      {"month": "2024-01", "sales": 90000, "region": "上海"},
+      {"month": "2024-02", "sales": 110000, "region": "上海"},
+      {"month": "2024-03", "sales": 150000, "region": "上海"}
+    ],
+    "options": {
+      "maxSteps": 10,
+      "enableReview": true,
+      "enableCharts": true
+    }
+  }'
+```
+
+**方式三：WebSocket 实时测试**
+使用 Postman 或任意 WebSocket 客户端连接 `ws://localhost:3001/multi-agent`，发送：
+```json
+{
+  "event": "start_multi_analysis",
+  "data": {
+    "prompt": "分析销售趋势",
+    "data": [{"month": "2024-01", "sales": 100000}]
+  }
+}
+```
+可实时接收 `agent_progress`、`task_update`、`analysis_complete` 事件。
+
+### 7. 常见问题排查
+
+**端口被占用：**
+```bash
+# 查看占用端口的进程
+lsof -i :3000
+lsof -i :3001
+lsof -i :5432
+lsof -i :6379
+
+# 杀掉占用进程
+kill -9 <PID>
+```
+
+**数据库连接失败：**
+```bash
+# 检查 PostgreSQL 是否运行
+docker ps | grep postgres
+
+# 查看 PostgreSQL 日志
+docker logs ai_analyzer_postgres
+```
+
+**Redis 连接失败：**
+```bash
+# 检查 Redis 是否运行
+docker ps | grep redis
+
+# 测试 Redis 连接
+docker exec ai_analyzer_redis redis-cli ping
+```
+
+**前端构建错误：**
+```bash
+# 清理缓存
+cd frontend
+rm -rf .next node_modules
+pnpm install
+```
 
 ## 🤝 参与贡献
 
