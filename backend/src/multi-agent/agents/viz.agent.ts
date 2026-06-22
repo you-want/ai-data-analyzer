@@ -100,24 +100,21 @@ ${dataContext}
 
 请根据数据特点选择合适的图表类型，并生成 ECharts 配置。`;
 
-      // 调用 LLM
-      const response = await this.llmService.chat(fullPrompt);
+      let output: VizAgentOutput;
+      try {
+        const response = await this.llmService.chat(fullPrompt);
+        const parsed = this.parseAndValidate(response);
 
-      // 解析并验证输出
-      const parsed = this.parseAndValidate(response);
+        if (!parsed.success) {
+          throw new Error(parsed.error || 'Viz Agent 输出解析失败');
+        }
 
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: {
-            message: parsed.error || 'Viz Agent 输出解析失败',
-            code: 'VIZ_PARSE_ERROR',
-            retryable: true,
-          },
-        };
+        output = parsed.data;
+      } catch (error) {
+        const err = error as Error;
+        this.logger.warn(`Viz Agent 使用规则兜底: ${err.message}`);
+        output = this.buildFallbackCharts(dataResults, task);
       }
-
-      const output = parsed.data;
 
       return {
         success: true,
@@ -194,5 +191,57 @@ ${dataContext}
       this.logger.warn(`Viz 输出验证失败: ${err.message}`);
       return { success: false, error: err.message };
     }
+  }
+
+  private buildFallbackCharts(
+    dataResults: Record<string, unknown>,
+    task: import('../types/agent.types').AgentTask,
+  ): VizAgentOutput {
+    const requestedKeys = (task.inputs.resultKeys as string[] | undefined) ?? [];
+    const resultKey =
+      requestedKeys[0] ??
+      Object.keys(dataResults).find((key) => key.startsWith('metrics_')) ??
+      Object.keys(dataResults)[0] ??
+      'unknown_result';
+    const source = dataResults[resultKey] as
+      | { table?: Array<Record<string, unknown>> }
+      | undefined;
+    const rows = source?.table ?? [];
+    const xData = rows.map((row) =>
+      this.normalizeAxisLabel(row.dimension ?? row.month ?? row.name ?? 'item'),
+    );
+    const seriesData = rows.map((row) => Number(row.value ?? row.total ?? 0));
+
+    return {
+      charts: [
+        {
+          id: 'trend_overview',
+          library: 'echarts',
+          option: {
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'category', data: xData },
+            yAxis: { type: 'value' },
+            series: [{ type: 'line', data: seriesData, smooth: true }],
+          },
+          dataRef: {
+            resultKey,
+            fields: ['dimension', 'value'],
+          },
+        },
+      ],
+    };
+  }
+
+  private normalizeAxisLabel(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return value.toString();
+    }
+    if (typeof value === 'object' && value !== null) {
+      return JSON.stringify(value);
+    }
+    return 'item';
   }
 }

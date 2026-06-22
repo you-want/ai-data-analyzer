@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AnalysisModule } from './analysis/analysis.module';
@@ -11,6 +12,12 @@ import { MultiAgentModule } from './multi-agent/multi-agent.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { AuthModule } from './auth/auth.module';
+import { CodeExecutionModule } from './code-execution/code-execution.module';
+import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { BillingModule } from './billing/billing.module';
+import { TenantContextInterceptor } from './tenant/tenant-context.interceptor';
+import { TenantModule } from './tenant/tenant.module';
 
 @Module({
   imports: [
@@ -60,9 +67,20 @@ import { redisStore } from 'cache-manager-redis-yet';
     AnalysisResultsModule,
     OpenAIModule,
     DataModule,
+    AuthModule,
+    CodeExecutionModule,
+    KnowledgeBaseModule,
+    BillingModule,
     MultiAgentModule,
+    TenantModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantContextInterceptor,
+    },
+  ],
 })
 export class AppModule {}

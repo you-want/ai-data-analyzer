@@ -100,24 +100,21 @@ ${reviewContext}
 
 请对数据处理结果和图表配置进行全面审阅。`;
 
-      // 调用 LLM
-      const response = await this.llmService.chat(fullPrompt);
+      let output: ReviewerAgentOutput;
+      try {
+        const response = await this.llmService.chat(fullPrompt);
+        const parsed = this.parseAndValidate(response);
 
-      // 解析并验证输出
-      const parsed = this.parseAndValidate(response);
+        if (!parsed.success) {
+          throw new Error(parsed.error || 'Reviewer Agent 输出解析失败');
+        }
 
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: {
-            message: parsed.error || 'Reviewer Agent 输出解析失败',
-            code: 'REVIEWER_PARSE_ERROR',
-            retryable: true,
-          },
-        };
+        output = parsed.data;
+      } catch (error) {
+        const err = error as Error;
+        this.logger.warn(`Reviewer Agent 使用规则兜底: ${err.message}`);
+        output = this.buildFallbackReview(dataResults, charts);
       }
-
-      const output = parsed.data;
 
       return {
         success: true,
@@ -183,5 +180,33 @@ ${reviewContext}
       this.logger.warn(`Reviewer 输出验证失败: ${err.message}`);
       return { success: false, error: err.message };
     }
+  }
+
+  private buildFallbackReview(
+    dataResults: Record<string, unknown>,
+    charts: import('../types/agent.types').ChartConfig[],
+  ): ReviewerAgentOutput {
+    const issues: ReviewerAgentOutput['issues'] = [];
+
+    for (const chart of charts) {
+      const resultKey = chart.dataRef.resultKey;
+      if (!dataResults[resultKey]) {
+        issues.push({
+          type: 'missing_data_ref',
+          message: `图表 ${chart.id} 引用了不存在的结果 ${resultKey}`,
+        });
+      }
+    }
+
+    return issues.length
+      ? {
+          status: 'fail',
+          issues,
+          suggestions: ['先修复图表引用，再让 Reviewer 扮演严格监工'],
+        }
+      : {
+          status: 'pass',
+          suggestions: ['规则兜底审阅通过，没有发现明显的数据引用问题'],
+        };
   }
 }

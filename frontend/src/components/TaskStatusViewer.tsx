@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { io, Socket } from 'socket.io-client';
+import { BACKEND_URL } from '@/lib/backend';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -68,7 +69,7 @@ export default function TaskStatusViewer({
 
   // 单任务模式：使用原有的轮询方式
   const { data, error, isLoading } = useSWR(
-    mode === 'single' && jobId ? `http://localhost:3001/analysis/status/${jobId}` : null,
+    mode === 'single' && jobId ? `${BACKEND_URL}/analysis/status/${jobId}` : null,
     fetcher,
     { refreshInterval: 2000 }
   );
@@ -76,7 +77,7 @@ export default function TaskStatusViewer({
   // 多智能体模式：使用 WebSocket 实时推送
   useEffect(() => {
     if (mode === 'multi' && analysisId) {
-      const newSocket = io('http://localhost:3001/multi-agent', {
+      const newSocket = io(`${BACKEND_URL}/multi-agent`, {
         transports: ['websocket'],
       });
 

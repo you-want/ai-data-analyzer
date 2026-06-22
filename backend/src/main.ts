@@ -8,6 +8,7 @@ import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    rawBody: true,
   });
 
   const configService = app.get(ConfigService);
@@ -23,7 +24,7 @@ async function bootstrap() {
 
   // 开启 CORS 允许前端跨域请求
   app.enableCors({
-    origin: 'http://localhost:3000', // 允许 Next.js 前端地址
+    origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
     credentials: true,
   });
 

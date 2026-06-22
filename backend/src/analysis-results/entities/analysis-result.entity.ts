@@ -11,6 +11,12 @@ export class AnalysisResult {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  workspaceId?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  userId?: string | null;
+
   @Column({ type: 'text' })
   taskName: string;
 

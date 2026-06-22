@@ -4,16 +4,58 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { MultiAgentModule } from './multi-agent.module';
 import { Supervisor } from './supervisor.service';
-import type { MultiAgentAnalyzeRequest } from './types/agent.types';
+import { RunStatus, type MultiAgentAnalyzeRequest } from './types/agent.types';
+import { RouterAgent } from './agents/router.agent';
+import { DataCoderAgent } from './agents/data-coder.agent';
+import { VizAgent } from './agents/viz.agent';
+import { ReviewerAgent } from './agents/reviewer.agent';
+import { CodeExecutionService } from '../code-execution/code-execution.service';
+import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
+import { BillingService } from '../billing/billing.service';
 
 describe('MultiAgent System', () => {
   let supervisor: Supervisor;
 
   beforeAll(async () => {
+    const llmServiceMock = {
+      chat: jest
+        .fn()
+        .mockRejectedValue(new Error('No external LLM in unit test')),
+    };
+    const knowledgeBaseServiceMock = {
+      query: jest.fn().mockResolvedValue([]),
+      buildContextPack: jest.fn().mockReturnValue(''),
+      ingestReport: jest.fn().mockResolvedValue([]),
+    };
+    const billingServiceMock = {
+      guardAnalysisAccess: jest.fn().mockResolvedValue(undefined),
+      startJob: jest.fn().mockResolvedValue(undefined),
+      finishJob: jest.fn().mockResolvedValue(undefined),
+      recordUsage: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      imports: [MultiAgentModule],
+      providers: [
+        Supervisor,
+        RouterAgent,
+        DataCoderAgent,
+        VizAgent,
+        ReviewerAgent,
+        CodeExecutionService,
+        {
+          provide: 'LLM_SERVICE',
+          useValue: llmServiceMock,
+        },
+        {
+          provide: KnowledgeBaseService,
+          useValue: knowledgeBaseServiceMock,
+        },
+        {
+          provide: BillingService,
+          useValue: billingServiceMock,
+        },
+      ],
     }).compile();
 
     supervisor = module.get<Supervisor>(Supervisor);
@@ -61,7 +103,7 @@ describe('MultiAgent System', () => {
     console.log('任务更新:', taskUpdates);
 
     // 如果成功，验证产物
-    if (result.status === 'DONE') {
+    if (result.status === RunStatus.DONE) {
       expect(result.report).toBeDefined();
       expect(result.artifacts).toBeDefined();
       console.log('分析报告:', result.report?.substring(0, 200));

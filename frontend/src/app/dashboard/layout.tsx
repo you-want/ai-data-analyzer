@@ -1,10 +1,24 @@
+'use client';
+
 import React from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const {
+    ready,
+    isAuthenticated,
+    user,
+    workspaces,
+    activeWorkspaceId,
+    switchWorkspace,
+    logout,
+  } = useAuth();
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-zinc-950 text-black dark:text-zinc-100">
       {/* 左侧边栏 (Sidebar) */}
@@ -45,11 +59,15 @@ export default function DashboardLayout({
         <div className="border-t border-gray-200 dark:border-zinc-800 pt-4 mt-auto">
           <div className="flex items-center gap-3 px-2">
             <div className="w-8 h-8 rounded-full bg-linear-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-              A
+              {user?.name?.slice(0, 1).toUpperCase() || 'G'}
             </div>
             <div>
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-gray-500 dark:text-zinc-500">Pro Plan</p>
+              <p className="text-sm font-medium">
+                {ready ? user?.name || 'Guest User' : '读取会话中...'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">
+                {isAuthenticated ? user?.email : '未登录'}
+              </p>
             </div>
           </div>
         </div>
@@ -67,6 +85,35 @@ export default function DashboardLayout({
           </div>
           
           <div className="flex items-center gap-4">
+            {isAuthenticated && workspaces.length > 0 ? (
+              <select
+                value={activeWorkspaceId || ''}
+                onChange={(event) => switchWorkspace(event.target.value)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+              >
+                {workspaces.map((workspace) => (
+                  <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                    {workspace.name} ({workspace.role})
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                退出
+              </button>
+            ) : (
+              <Link
+                href="/"
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                去登录
+              </Link>
+            )}
             <button className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
             </button>

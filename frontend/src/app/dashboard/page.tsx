@@ -4,19 +4,24 @@ import UploadForm from '@/components/UploadForm';
 import TaskStatusViewer from '@/components/TaskStatusViewer';
 import MetricCard from '@/components/MetricCard';
 import MultiAgentForm from '@/components/MultiAgentForm';
-import dynamic from 'next/dynamic';
+import WorkspaceStatusPanel from '@/components/WorkspaceStatusPanel';
+import KnowledgeSearchPanel from '@/components/KnowledgeSearchPanel';
+import WorkspaceMembersPanel from '@/components/WorkspaceMembersPanel';
+import nextDynamic from 'next/dynamic';
+
+export const dynamic = 'force-dynamic';
 
 // 动态导入重型图表组件，避免阻塞首屏渲染
-const AdvancedSalesChart = dynamic(() => import('@/components/charts/AdvancedSalesChart'), {
+const AdvancedSalesChart = nextDynamic(() => import('@/components/charts/AdvancedSalesChart'), {
   loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">图表加载中...</div>,
 });
-const DataGalaxy3D = dynamic(() => import('@/components/charts/DataGalaxy3D'), {
+const DataGalaxy3D = nextDynamic(() => import('@/components/charts/DataGalaxy3D'), {
   loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">3D引擎加载中...</div>,
 });
-const UserRadarChart = dynamic(() => import('@/components/charts/UserRadarChart'), {
+const UserRadarChart = nextDynamic(() => import('@/components/charts/UserRadarChart'), {
   loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">雷达图加载中...</div>,
 });
-const KnowledgeGraphChart = dynamic(() => import('@/components/charts/KnowledgeGraphChart'), {
+const KnowledgeGraphChart = nextDynamic(() => import('@/components/charts/KnowledgeGraphChart'), {
   loading: () => <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse text-sm text-gray-400">知识图谱加载中...</div>,
 });
 
@@ -131,12 +136,20 @@ export default async function DashboardPage() {
       </div>
 
       {/* 多智能体协作分析区 */}
-      <section className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-        <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-zinc-100">多智能体协作分析</h2>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">
-          启动 Router、Coder、Viz、Reviewer 四个 Agent 协同工作，自动拆解任务、生成图表、审阅结果。
-        </p>
-        <MultiAgentForm />
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-zinc-100">多智能体协作分析</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">
+            启动 Router、Coder、Viz、Reviewer 四个 Agent 协同工作，自动拆解任务、生成图表、审阅结果，并把结果沉淀回知识库。
+          </p>
+          <MultiAgentForm />
+        </div>
+
+        <div className="space-y-8">
+          <WorkspaceStatusPanel />
+          <KnowledgeSearchPanel />
+          <WorkspaceMembersPanel />
+        </div>
       </section>
     </div>
   );

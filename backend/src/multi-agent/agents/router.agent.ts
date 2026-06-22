@@ -97,24 +97,19 @@ ${dataSummary}
 
 请根据用户请求和数据情况，生成任务计划。`;
 
-      // 调用 LLM
-      const response = await this.llmService.chat(fullPrompt);
-
-      // 解析并验证输出
-      const parsed = this.parseAndValidate(response);
-
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: {
-            message: parsed.error || 'Router Agent 输出解析失败',
-            code: 'ROUTER_PARSE_ERROR',
-            retryable: true,
-          },
-        };
+      let output: RouterAgentOutput;
+      try {
+        const response = await this.llmService.chat(fullPrompt);
+        const parsed = this.parseAndValidate(response);
+        if (!parsed.success) {
+          throw new Error(parsed.error || 'Router Agent 输出解析失败');
+        }
+        output = parsed.data;
+      } catch (error) {
+        const err = error as Error;
+        this.logger.warn(`Router Agent 使用规则兜底: ${err.message}`);
+        output = this.buildFallbackPlan(userPrompt, context.rawData ?? []);
       }
-
-      const output = parsed.data;
 
       // 检查是否需要澄清
       if (output.clarificationNeeded) {
@@ -186,5 +181,60 @@ ${JSON.stringify(sample, null, 2)}`;
       this.logger.warn(`Router 输出验证失败: ${err.message}`);
       return { success: false, error: err.message };
     }
+  }
+
+  private buildFallbackPlan(
+    userPrompt: string,
+    data: Record<string, unknown>[],
+  ): RouterAgentOutput {
+    const fields = Object.keys(data[0] || {});
+    const numericFields = fields.filter((field) =>
+      data.some((row) => Number.isFinite(Number(row[field]))),
+    );
+    const dimensionField =
+      fields.find((field) =>
+        /(date|time|month|day|week|year|region|name|category)/i.test(field),
+      ) ?? fields.find((field) => !numericFields.includes(field));
+
+    return {
+      goal: userPrompt,
+      tasks: [
+        {
+          id: 't1',
+          type: 'data_profile',
+          inputs: { focus: fields.slice(0, 5) },
+        },
+        {
+          id: 't2',
+          type: 'compute_metrics',
+          inputs: {
+            metricField: numericFields[0] ?? fields[0] ?? 'value',
+            dimensionField: dimensionField ?? fields[0] ?? 'dimension',
+          },
+        },
+        {
+          id: 't3',
+          type: 'chart_spec',
+          inputs: {
+            charts: ['trend_overview'],
+            resultKeys: ['metrics_t2'],
+          },
+        },
+        {
+          id: 't4',
+          type: 'review',
+          inputs: { checks: ['unit', 'outlier', 'chart_consistency'] },
+        },
+        {
+          id: 't5',
+          type: 'final_report',
+          inputs: { style: 'bullet', audience: 'business' },
+        },
+      ],
+      risks:
+        fields.length === 0
+          ? ['数据为空，结果会比较像空气分析']
+          : ['当前使用规则兜底计划，建议补充真实大模型配置以获得更细任务拆解'],
+    };
   }
 }

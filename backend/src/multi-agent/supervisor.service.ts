@@ -25,6 +25,8 @@ import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
 import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
+import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
+import { BillingService } from '../billing/billing.service';
 
 // 默认配置
 const DEFAULT_MAX_STEPS = 20;
@@ -40,6 +42,8 @@ export class Supervisor {
     private readonly dataCoderAgent: DataCoderAgent,
     private readonly vizAgent: VizAgent,
     private readonly reviewerAgent: ReviewerAgent,
+    private readonly knowledgeBaseService: KnowledgeBaseService,
+    private readonly billingService: BillingService,
     @Inject('LLM_SERVICE') private readonly llmService: ILLMService,
   ) {}
 
@@ -59,6 +63,15 @@ export class Supervisor {
 
     this.logger.log(`开始多智能体分析: ${analysisId}`);
 
+    if (request.workspaceId) {
+      await this.billingService.guardAnalysisAccess({
+        workspaceId: request.workspaceId,
+        userId: request.userId,
+        route: 'multi-agent.analyze',
+      });
+      await this.billingService.startJob(request.workspaceId);
+    }
+
     // 初始化上下文
     const context: AnalysisRunContext = {
       analysisId,
@@ -76,6 +89,18 @@ export class Supervisor {
     };
 
     try {
+      if (request.workspaceId) {
+        const retrieved = await this.knowledgeBaseService.query(
+          request.workspaceId,
+          request.prompt,
+          4,
+        );
+        if (retrieved.length > 0) {
+          context.artifacts['retrieved_context'] =
+            this.knowledgeBaseService.buildContextPack(retrieved);
+        }
+      }
+
       // Step 1: Router Agent 生成任务计划
       this.emitProgress(context, '正在分析用户意图...', onProgress);
       const routerResult = await this.routerAgent.run(request.prompt, context);
@@ -143,6 +168,32 @@ export class Supervisor {
 
       this.emitProgress(context, '分析完成', onProgress);
 
+      if (request.workspaceId) {
+        await this.knowledgeBaseService.ingestReport({
+          workspaceId: request.workspaceId,
+          analysisId,
+          datasetId: request.datasetId,
+          report,
+          metadata: {
+            source: 'multi-agent',
+            userPrompt: request.prompt,
+          },
+        });
+
+        await this.billingService.recordUsage({
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          eventType: 'llm',
+          eventKey: `${analysisId}:report`,
+          units: {
+            tokens: this.estimateTokens(report),
+          },
+          metadata: {
+            taskCount: context.plan?.tasks.length ?? 0,
+          },
+        });
+      }
+
       return {
         analysisId,
         status: RunStatus.DONE,
@@ -154,6 +205,10 @@ export class Supervisor {
       const err = error as Error;
       this.logger.error(`多智能体分析失败: ${err.message}`, err.stack);
       return this.buildErrorResponse(context, err.message);
+    } finally {
+      if (request.workspaceId) {
+        await this.billingService.finishJob(request.workspaceId);
+      }
     }
   }
 
@@ -443,6 +498,10 @@ export class Supervisor {
       .map((s) => `- [${s.role}] ${s.text}`)
       .join('\n');
     const artifacts = Object.keys(context.artifacts);
+    const retrievedContext =
+      typeof context.artifacts['retrieved_context'] === 'string'
+        ? context.artifacts['retrieved_context']
+        : '无';
 
     const prompt = `你是一个数据分析报告撰写专家。请根据以下分析过程和结果，生成一份清晰、专业的分析报告。
 
@@ -454,6 +513,9 @@ ${summaries}
 
 【生成的产物】
 ${artifacts.join(', ')}
+
+【历史上下文 / 知识库召回】
+${retrievedContext}
 
 【用户原始请求】
 ${context.userPrompt}
@@ -470,7 +532,7 @@ ${context.userPrompt}
     } catch (error) {
       const err = error as Error;
       this.logger.error(`生成报告失败: ${err.message}`);
-      return `报告生成失败: ${err.message}`;
+      return this.buildFallbackReport(context);
     }
   }
 
@@ -564,5 +626,48 @@ ${context.userPrompt}
       error: task.error,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private buildFallbackReport(context: AnalysisRunContext): string {
+    const planSummary =
+      context.plan?.tasks
+        .map((task) => `- ${task.type}: ${task.status}`)
+        .join('\n') ?? '- 暂无任务';
+    const artifactSummary = Object.entries(context.artifacts)
+      .filter(([key]) => key !== 'retrieved_context')
+      .map(([key, value]) => `- ${key}: ${this.summarizeArtifact(value)}`)
+      .join('\n');
+
+    return [
+      `# 分析报告`,
+      ``,
+      `## 我刚刚干了什么`,
+      `- 目标：${context.plan?.goal ?? context.userPrompt}`,
+      `- 状态：${context.status}`,
+      ``,
+      `## 任务执行`,
+      planSummary,
+      ``,
+      `## 关键产物`,
+      artifactSummary || '- 目前还没有产物，像极了周一早上的脑子',
+      ``,
+      `## 总结`,
+      `- 当前报告由规则兜底生成，适合本地开发和离线验证。`,
+      `- 如果要更像“会写 PPT 的分析师”，补上真实大模型配置即可。`,
+    ].join('\n');
+  }
+
+  private summarizeArtifact(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `数组(${value.length})`;
+    }
+    if (value && typeof value === 'object') {
+      return `对象字段: ${Object.keys(value).slice(0, 5).join(', ')}`;
+    }
+    return String(value);
+  }
+
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
   }
 }

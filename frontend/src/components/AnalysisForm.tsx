@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AIInsightPanel from './AIInsightPanel';
+import { BACKEND_URL } from '@/lib/backend';
 
 // 定义分析结果的类型接口
 interface AnalysisResult {
@@ -23,7 +24,7 @@ export default function AnalysisForm() {
     setLoading(true);
     try {
       // 这里的 fetch 发生在浏览器端
-      const res = await fetch('http://localhost:3001/analysis/structured', {
+      const res = await fetch(`${BACKEND_URL}/analysis/structured`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })

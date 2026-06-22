@@ -188,6 +188,8 @@ export interface MultiAgentAnalyzeRequest {
   prompt: string;
   data: Record<string, unknown>[];
   datasetId?: string;
+  workspaceId?: string;
+  userId?: string;
   options?: {
     maxSteps?: number;
     maxTokens?: number;

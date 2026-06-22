@@ -5,7 +5,7 @@ import { ILLMService } from './llm.interface';
 
 @Injectable()
 export class OpenAIService implements ILLMService {
-  private readonly openai: OpenAI;
+  private readonly openai?: OpenAI;
   private readonly logger = new Logger(OpenAIService.name);
   private readonly defaultModel: string;
 
@@ -16,8 +16,10 @@ export class OpenAIService implements ILLMService {
       this.configService.get<string>('OPENAI_MODEL') || 'gpt-3.5-turbo';
 
     if (!apiKey) {
-      this.logger.error('OPENAI_API_KEY is not defined');
-      throw new Error('OPENAI_API_KEY is not defined');
+      this.logger.warn(
+        'OPENAI_API_KEY is not defined, OpenAIService 将退化为未配置状态',
+      );
+      return;
     }
 
     this.openai = new OpenAI({
@@ -27,6 +29,10 @@ export class OpenAIService implements ILLMService {
   }
 
   async chat(prompt: string, model?: string): Promise<string> {
+    if (!this.openai) {
+      throw new Error('OPENAI_API_KEY is not defined');
+    }
+
     try {
       const targetModel =
         model ||
@@ -63,6 +69,10 @@ export class OpenAIService implements ILLMService {
     prompt: string,
     model?: string,
   ): Promise<AsyncIterable<string>> {
+    if (!this.openai) {
+      throw new Error('OPENAI_API_KEY is not defined');
+    }
+
     try {
       const targetModel =
         model ||

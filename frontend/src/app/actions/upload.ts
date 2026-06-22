@@ -3,7 +3,9 @@
 export async function uploadDataAction(formData: FormData) {
   // 这个函数运行在 Node.js 环境，可以直接调用后端微服务
   try {
-    const res = await fetch('http://localhost:3001/data/upload/csv', {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const res = await fetch(`${backendUrl}/data/upload/csv`, {
       method: 'POST',
       body: formData,
     });

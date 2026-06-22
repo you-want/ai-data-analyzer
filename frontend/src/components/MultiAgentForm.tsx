@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { io } from 'socket.io-client';
 import TaskStatusViewer from './TaskStatusViewer';
+import { BACKEND_URL } from '@/lib/backend';
+import { useAuth } from './providers/AuthProvider';
 
 interface AgentTask {
   id: string;
@@ -14,22 +16,16 @@ interface AgentTask {
 }
 
 export default function MultiAgentForm() {
+  const { isAuthenticated, user, activeWorkspaceId } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [reportPreview, setReportPreview] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-
-    setIsAnalyzing(true);
-    setError(null);
-    setAnalysisId(null);
-    setTasks([]);
-
-    const sampleData = [
+  const sampleData = useMemo(
+    () => [
       { month: '2024-01', sales: 100000, region: '北京' },
       { month: '2024-02', sales: 120000, region: '北京' },
       { month: '2024-03', sales: 80000, region: '北京' },
@@ -38,9 +34,25 @@ export default function MultiAgentForm() {
       { month: '2024-02', sales: 110000, region: '上海' },
       { month: '2024-03', sales: 130000, region: '上海' },
       { month: '2024-04', sales: 160000, region: '上海' },
-    ];
+    ],
+    [],
+  );
 
-    const socket = io('http://localhost:3001/multi-agent', {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    if (!isAuthenticated || !user || !activeWorkspaceId) {
+      setError('请先登录并选择工作空间，再启动多智能体分析。');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setAnalysisId(null);
+    setTasks([]);
+    setReportPreview(null);
+
+    const socket = io(`${BACKEND_URL}/multi-agent`, {
       transports: ['websocket'],
     });
 
@@ -49,6 +61,8 @@ export default function MultiAgentForm() {
       socket.emit('start_multi_analysis', {
         prompt,
         data: sampleData,
+        workspaceId: activeWorkspaceId,
+        userId: user.id,
         options: { maxSteps: 10, enableReview: true, enableCharts: true },
       });
     });
@@ -88,6 +102,7 @@ export default function MultiAgentForm() {
 
     socket.on('analysis_complete', (result) => {
       console.log('Analysis complete:', result);
+      setReportPreview(typeof result?.report === 'string' ? result.report : null);
       setIsAnalyzing(false);
       socket.close();
     });
@@ -127,9 +142,15 @@ export default function MultiAgentForm() {
           />
         </div>
 
+        <div className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+          {isAuthenticated
+            ? `当前会把分析结果挂到 workspace ${activeWorkspaceId}，发起人是 ${user?.name}。`
+            : '请先在首页登录，不然这套 SaaS 能力就像还没插电的机甲。'}
+        </div>
+
         <button
           type="submit"
-          disabled={isAnalyzing || !prompt.trim()}
+          disabled={isAnalyzing || !prompt.trim() || !isAuthenticated}
           className="w-full px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
         >
           {isAnalyzing ? (
@@ -154,6 +175,17 @@ export default function MultiAgentForm() {
 
       {analysisId && (
         <TaskStatusViewer mode="multi" analysisId={analysisId} tasks={tasks} />
+      )}
+
+      {reportPreview && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+          <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+            最终报告预览
+          </h3>
+          <pre className="whitespace-pre-wrap text-sm leading-7 text-gray-700 dark:text-zinc-200">
+            {reportPreview}
+          </pre>
+        </div>
       )}
     </div>
   );

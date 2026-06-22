@@ -12,9 +12,17 @@ import { ReviewerAgent } from './agents/reviewer.agent';
 import { Supervisor } from './supervisor.service';
 import { MultiAgentController } from './multi-agent.controller';
 import { MultiAgentGateway } from './multi-agent.gateway';
+import { CodeExecutionModule } from '../code-execution/code-execution.module';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [OpenAIModule],
+  imports: [
+    OpenAIModule,
+    CodeExecutionModule,
+    KnowledgeBaseModule,
+    BillingModule,
+  ],
   controllers: [MultiAgentController],
   providers: [
     RouterAgent,
