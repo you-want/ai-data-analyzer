@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -9,6 +10,8 @@ import {
 import { Membership } from './membership.entity';
 
 @Entity('workspaces')
+@Index(['ownerUserId'])
+@Index(['createdAt'])
 export class Workspace {
   @PrimaryGeneratedColumn('uuid')
   id: string;

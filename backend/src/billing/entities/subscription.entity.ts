@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -9,11 +10,15 @@ import {
 export type BillingPlan = 'free' | 'pro' | 'team';
 
 @Entity('subscriptions')
+@Index(['workspaceId'], { unique: true })
+@Index(['plan'])
+@Index(['status'])
+@Index(['currentPeriodEnd'])
 export class Subscription {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', unique: true })
+  @Column({ type: 'uuid' })
   workspaceId: string;
 
   @Column({ type: 'varchar', length: 40, default: 'free' })

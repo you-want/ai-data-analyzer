@@ -18,27 +18,66 @@ import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { BillingModule } from './billing/billing.module';
 import { TenantContextInterceptor } from './tenant/tenant-context.interceptor';
 import { TenantModule } from './tenant/tenant.module';
+import { LoggerModule } from './logger/logger.module';
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { MetricsInterceptor } from './metrics/metrics.interceptor';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { CryptoModule } from './crypto/crypto.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
-    AnalysisModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
+    BullModule.forRootAsync({
+      useFactory: (configService: ConfigService) => {
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
+        const redisPort = Number(configService.get<number>('REDIS_PORT', 6379));
+        console.log('[DEBUG] BullModule config:', {
+          host: redisHost,
+          port: redisPort,
+          hasPassword: !!redisPassword,
+        });
+        const config: Record<string, unknown> = {
+          host: redisHost,
+          port: redisPort,
+        };
+        if (redisPassword) {
+          config.password = redisPassword;
+        }
+        return {
+          connection: config,
+        };
+      },
+      inject: [ConfigService],
+    }),
+    AnalysisModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
         const store = await redisStore({
           socket: {
-            host: configService.get('REDIS_HOST', 'localhost'),
-            port: Number(configService.get('REDIS_PORT', 6379)),
+            host: configService.get<string>('REDIS_HOST', 'localhost'),
+            port: Number(configService.get<number>('REDIS_PORT', 6379)),
           },
+          ...(redisPassword && { password: redisPassword }),
         });
         return {
           store,
-          ttl: 3600000, // 默认 1 小时缓存 (ms)
+          ttl: 3600000,
         };
       },
     }),
@@ -58,12 +97,6 @@ import { TenantModule } from './tenant/tenant.module';
         retryDelay: 3000,
       }),
     }),
-    BullModule.forRoot({
-      connection: {
-        host: 'localhost',
-        port: 6379,
-      },
-    }),
     AnalysisResultsModule,
     OpenAIModule,
     DataModule,
@@ -73,6 +106,11 @@ import { TenantModule } from './tenant/tenant.module';
     BillingModule,
     MultiAgentModule,
     TenantModule,
+    LoggerModule,
+    HealthModule,
+    MetricsModule,
+    CryptoModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [
@@ -80,6 +118,14 @@ import { TenantModule } from './tenant/tenant.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantContextInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

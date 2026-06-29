@@ -2,11 +2,17 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('analysis_results')
+@Index(['workspaceId'])
+@Index(['userId'])
+@Index(['status'])
+@Index(['workspaceId', 'status'])
+@Index(['createdAt'])
 export class AnalysisResult {
   @PrimaryGeneratedColumn('uuid')
   id: string;

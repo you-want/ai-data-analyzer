@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -13,6 +14,9 @@ import type { WorkspaceRole } from '../auth.types';
 
 @Entity('memberships')
 @Unique(['userId', 'workspaceId'])
+@Index(['userId'])
+@Index(['workspaceId'])
+@Index(['workspaceId', 'role'])
 export class Membership {
   @PrimaryGeneratedColumn('uuid')
   id: string;

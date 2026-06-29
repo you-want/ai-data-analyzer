@@ -17,6 +17,7 @@ services:
     image: redis:7-alpine
     container_name: ai_analyzer_redis
     restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_dev_password}
     ports:
       - "6379:6379"
     volumes:

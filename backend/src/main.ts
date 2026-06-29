@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -13,32 +14,66 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // 开启微服务监听 (混合应用模式)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          fontSrc: ["'self'", 'https:'],
+          connectSrc: ["'self'", 'https:'],
+          frameSrc: ["'self'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      hidePoweredBy: true,
+      xssFilter: true,
+      noSniff: true,
+    }),
+  );
+
+  app.enableCors({
+    origin: [
+      configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
+      'http://localhost:3002',
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+    ],
+  });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.REDIS,
     options: {
       host: configService.get<string>('REDIS_HOST', 'localhost'),
       port: Number(configService.get<number>('REDIS_PORT', 6379)),
+      password: configService.get<string>('REDIS_PASSWORD'),
     },
   });
 
-  // 开启 CORS 允许前端跨域请求
-  app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL', 'http://localhost:3000'),
-    credentials: true,
-  });
-
-  // 启用全局验证管道
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // 自动剔除 DTO 中未定义的属性，增加安全性
-    }),
-  );
-
-  await app.startAllMicroservices(); // 启动微服务
+  await app.startAllMicroservices();
   new Logger('Bootstrap').log(`Microservice is listening via Redis transport`);
 
-  const port = configService.get<number>('PORT') || 3001; // 防止和前端3000冲突
+  const port = configService.get<number>('PORT') || 3001;
   await app.listen(port);
   new Logger('Bootstrap').log(`API listening on http://localhost:${port}`);
 }

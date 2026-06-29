@@ -31,7 +31,9 @@ export class MultiAgentController {
   async analyze(
     @Body() request: MultiAgentAnalyzeRequest,
   ): Promise<MultiAgentAnalyzeResponse> {
-    this.logger.log(`收到多智能体分析请求, prompt: ${request.prompt.substring(0, 100)}...`);
+    this.logger.log(
+      `收到多智能体分析请求, prompt: ${request.prompt.substring(0, 100)}...`,
+    );
 
     const result = await this.supervisor.analyze(request);
 

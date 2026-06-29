@@ -197,7 +197,8 @@ ${dataContext}
     dataResults: Record<string, unknown>,
     task: import('../types/agent.types').AgentTask,
   ): VizAgentOutput {
-    const requestedKeys = (task.inputs.resultKeys as string[] | undefined) ?? [];
+    const requestedKeys =
+      (task.inputs.resultKeys as string[] | undefined) ?? [];
     const resultKey =
       requestedKeys[0] ??
       Object.keys(dataResults).find((key) => key.startsWith('metrics_')) ??

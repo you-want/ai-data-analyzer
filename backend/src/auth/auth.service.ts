@@ -784,8 +784,24 @@ export class AuthService {
 
   private assertOAuthProviderEnabled(provider: OAuthProvider): void {
     const config = this.getOAuthProviderConfig(provider);
+    const providerName = provider === 'github' ? 'GitHub' : 'Google';
+    const docsUrl =
+      provider === 'github'
+        ? 'https://github.com/settings/developers'
+        : 'https://console.cloud.google.com/apis/credentials';
+
     if (!config?.clientId || !config.clientSecret) {
-      throw new BadRequestException(`OAuth Provider ${provider} 尚未配置完整`);
+      const missingFields: string[] = [];
+      if (!config?.clientId)
+        missingFields.push(`${providerName.toUpperCase()}_CLIENT_ID`);
+      if (!config?.clientSecret)
+        missingFields.push(`${providerName.toUpperCase()}_CLIENT_SECRET`);
+
+      throw new BadRequestException(
+        `OAuth Provider ${providerName} 尚未配置完整。请设置以下环境变量: ${missingFields.join(
+          ', ',
+        )}。配置指南: ${docsUrl}`,
+      );
     }
   }
 

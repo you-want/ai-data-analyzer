@@ -13,7 +13,7 @@ export default function Home() {
             让多智能体、RAG、权限和计费真的开始干活
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200/80">
-            我把第 6 章里最容易停留在 PPT 的东西，尽量往可运行代码上推了一步。现在你可以先登录、自动拿到个人工作空间，再进控制台看多智能体、知识库和套餐配额一起上班。
+            现在你可以先登录、自动拿到个人工作空间，再进控制台看多智能体、知识库和套餐配额一起上班。
           </p>
           <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-200/80">
             <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
