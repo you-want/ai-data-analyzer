@@ -98,32 +98,51 @@ pnpm install
 # 数据库配置
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-DATABASE_USER=rain9_ai_data
-DATABASE_PASSWORD=rain9_ai_data_admin
+DATABASE_USER=ai_data_user
+DATABASE_PASSWORD=ai_data_password
 DATABASE_NAME=ai_analysis_db
 
-# AI 模型配置 (使用阿里云通义千问)
-OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-OPENAI_API_KEY=your_api_key_here  # 替换为你的阿里云 API Key
-OPENAI_MODEL=qwen3.7-plus
+# Redis 配置
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=redis_dev_password
+
+# AI 模型配置 (使用 OpenAI)
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=your_api_key_here  # 替换为你的 OpenAI API Key
+OPENAI_MODEL=gpt-4o
+
+# 或者使用阿里云通义千问
+# OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+# OPENAI_API_KEY=your_api_key_here  # 替换为你的阿里云 API Key
+# OPENAI_MODEL=qwen3.7-plus
 
 # 或者使用本地 Ollama 模型（取消注释以下三行）
 # OPENAI_API_KEY=ollama
 # OPENAI_BASE_URL=http://localhost:11434/v1
 # OPENAI_MODEL=qwen2.5
+
+# JWT 密钥（生产环境务必修改）
+JWT_SECRET=your-secret-key-change-in-production-12345
 ```
 
-**注意**：数据库用户名和密码需要与 `docker-compose.yml` 中的配置一致。项目根目录的 `.env` 文件中已配置：
+**注意**：数据库用户名和密码需要与项目根目录 `.env` 文件中的配置一致：
 ```env
-POSTGRES_USER=rain9_ai_data
-POSTGRES_PASSWORD=rain9_ai_data_admin
+POSTGRES_USER=ai_data_user
+POSTGRES_PASSWORD=ai_data_password
 POSTGRES_DB=ai_analysis_db
+REDIS_PASSWORD=redis_dev_password
 ```
 
 #### 前端配置
 ```bash
 cd frontend
 pnpm install
+```
+
+在 `frontend` 目录下创建 `.env.local` 文件，配置后端 API 地址：
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 ```
 
 ### 4. 启动服务
@@ -136,6 +155,12 @@ pnpm run start:dev
 *注：项目中已集成 `kill-port`，启动时会自动清理占用的 `3001` 端口。*
 服务将运行在：`http://localhost:3001`
 
+**首次部署数据库迁移（仅第一次启动时需要）：**
+```bash
+cd backend
+pnpm migration:run
+```
+
 **启动前端服务（新终端窗口）：**
 ```bash
 cd frontend
@@ -145,9 +170,14 @@ pnpm run dev
 
 ### 5. 验证服务状态
 
-**检查后端健康状态：**
+**检查后端健康状态（基础）：**
 ```bash
 curl http://localhost:3001/health
+```
+
+**检查后端深度健康状态（包含数据库、Redis、队列）：**
+```bash
+curl http://localhost:3001/health/deep
 ```
 
 **检查多智能体服务：**
@@ -230,8 +260,8 @@ docker logs ai_analyzer_postgres
 # 检查 Redis 是否运行
 docker ps | grep redis
 
-# 测试 Redis 连接
-docker exec ai_analyzer_redis redis-cli ping
+# 测试 Redis 连接（需要密码认证）
+docker exec ai_analyzer_redis redis-cli -a redis_dev_password ping
 ```
 
 **前端构建错误：**

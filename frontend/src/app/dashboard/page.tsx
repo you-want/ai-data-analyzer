@@ -135,9 +135,9 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      {/* 多智能体协作分析区 */}
-      <section className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+      {/* 多智能体协作分析区 & 侧边面板 */}
+      <section className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        <div className="xl:col-span-3 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
           <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-zinc-100">多智能体协作分析</h2>
           <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">
             启动 Router、Coder、Viz、Reviewer 四个 Agent 协同工作，自动拆解任务、生成图表、审阅结果，并把结果沉淀回知识库。
@@ -148,8 +148,12 @@ export default async function DashboardPage() {
         <div className="space-y-8">
           <WorkspaceStatusPanel />
           <KnowledgeSearchPanel />
-          <WorkspaceMembersPanel />
         </div>
+      </section>
+
+      {/* 工作空间成员管理 (单独一行，更宽敞) */}
+      <section className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+        <WorkspaceMembersPanel />
       </section>
     </div>
   );

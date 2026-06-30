@@ -242,8 +242,9 @@ export default function WorkspaceMembersPanel() {
       </div>
 
       {canManageMembers ? (
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 dark:bg-zinc-950">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_120px_120px]">
+        <div className="mt-6 rounded-xl bg-gray-50 p-5 dark:bg-zinc-950">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">成员管理</h4>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.5fr)_140px_140px]">
             <input
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -271,76 +272,81 @@ export default function WorkspaceMembersPanel() {
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_120px_120px_120px_minmax(0,1fr)]">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-              className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-              placeholder="可选：顺手发到这个邮箱"
-            />
-            <select
-              value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value as EditableRole)}
-              className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-            >
-              <option value="member">member</option>
-              <option value="viewer">viewer</option>
-              {activeWorkspace?.role === 'owner' ? (
-                <option value="admin">admin</option>
-              ) : null}
-            </select>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={inviteExpiresInDays}
-              onChange={(event) => setInviteExpiresInDays(event.target.value)}
-              className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-              placeholder="有效天数"
-            />
-            <button
-              type="button"
-              onClick={handleCreateInviteLink}
-              disabled={submitting}
-              className="rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 px-4 py-3 text-sm font-medium text-white transition hover:from-blue-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              生成邀请链接
-            </button>
-            <div className="rounded-xl border border-dashed border-gray-200 px-4 py-3 text-xs text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
+          <div className="mt-5 pt-5 border-t border-gray-200 dark:border-zinc-800">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">生成邀请链接</h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.5fr)_140px_100px_160px]">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                placeholder="可选：顺手发到这个邮箱"
+              />
+              <select
+                value={inviteRole}
+                onChange={(event) => setInviteRole(event.target.value as EditableRole)}
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              >
+                <option value="member">member</option>
+                <option value="viewer">viewer</option>
+                {activeWorkspace?.role === 'owner' ? (
+                  <option value="admin">admin</option>
+                ) : null}
+              </select>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={inviteExpiresInDays}
+                onChange={(event) => setInviteExpiresInDays(event.target.value)}
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                placeholder="天数"
+              />
+              <button
+                type="button"
+                onClick={handleCreateInviteLink}
+                disabled={submitting}
+                className="rounded-xl bg-linear-to-r from-blue-500 to-cyan-500 px-4 py-3 text-sm font-medium text-white transition hover:from-blue-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                生成邀请链接
+              </button>
+            </div>
+            <div className="mt-3 rounded-xl border border-dashed border-gray-200 px-4 py-3 text-xs text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
               新链接默认 7 天失效。填邮箱时会尝试发邀请邮件，没配邮件通道也不会阻止链接生成。
             </div>
           </div>
 
           {latestInviteUrl ? (
-            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/30 dark:bg-blue-950/30 dark:text-blue-100">
-              <div className="font-medium">刚刚生成的邀请链接</div>
-              <div className="mt-2 break-all text-xs">{latestInviteUrl}</div>
-              {latestInviteMessage ? (
-                <div className="mt-2 text-xs">{latestInviteMessage}</div>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyInviteUrl}
-                  className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-500"
-                >
-                  {copiedInviteUrl ? '已复制' : '复制链接'}
-                </button>
-                <a
-                  href={latestInviteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-900/20"
-                >
-                  打开邀请页
-                </a>
+            <div className="mt-5 pt-5 border-t border-gray-200 dark:border-zinc-800">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 dark:border-blue-900/30 dark:bg-blue-950/30 dark:text-blue-100">
+                <div className="font-medium">刚刚生成的邀请链接</div>
+                <div className="mt-2 break-all text-xs">{latestInviteUrl}</div>
+                {latestInviteMessage ? (
+                  <div className="mt-2 text-xs">{latestInviteMessage}</div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyInviteUrl}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-blue-500"
+                  >
+                    {copiedInviteUrl ? '已复制' : '复制链接'}
+                  </button>
+                  <a
+                    href={latestInviteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-blue-300 px-4 py-2 text-xs font-medium text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-900/20"
+                  >
+                    打开邀请页
+                  </a>
+                </div>
               </div>
             </div>
           ) : null}
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+        <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
           当前角色只能查看成员列表，暂时没有人事任免权。恭喜你，少了很多锅。
         </div>
       )}
@@ -356,75 +362,76 @@ export default function WorkspaceMembersPanel() {
         </div>
       ) : null}
 
-      <div className="mt-4 space-y-3">
-        {isLoading ? (
-          <div className="text-sm text-gray-500 dark:text-zinc-400">正在读取成员列表...</div>
-        ) : members && members.length > 0 ? (
-          members.map((member) => (
-            <div
-              key={member.membershipId}
-              className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-zinc-100">
-                    {member.name}
+      <div className="mt-6">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">成员列表</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading ? (
+            <div className="text-sm text-gray-500 dark:text-zinc-400">正在读取成员列表...</div>
+          ) : members && members.length > 0 ? (
+            members.map((member) => (
+              <div
+                key={member.membershipId}
+                className="rounded-xl border border-gray-100 bg-gray-50 p-5 dark:border-zinc-800 dark:bg-zinc-950"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-zinc-100">
+                      {member.name}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                      {member.email}
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                    {member.email}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canManageMembers && member.role !== 'owner' ? (
+                      <select
+                        value={member.role}
+                        disabled={submitting}
+                        onChange={(event) =>
+                          handleRoleChange(
+                            member.membershipId,
+                            event.target.value as EditableRole,
+                          )
+                        }
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                      >
+                        {activeWorkspace?.role === 'owner' ? (
+                          <option value="admin">admin</option>
+                        ) : null}
+                        <option value="member">member</option>
+                        <option value="viewer">viewer</option>
+                      </select>
+                    ) : (
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                        {member.role}
+                      </span>
+                    )}
+
+                    {canManageMembers && member.role !== 'owner' ? (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleRemove(member.membershipId)}
+                        className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/40 dark:text-rose-200 dark:hover:bg-rose-950/30"
+                      >
+                        移除
+                      </button>
+                    ) : null}
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {canManageMembers && member.role !== 'owner' ? (
-                    <select
-                      value={member.role}
-                      disabled={submitting}
-                      onChange={(event) =>
-                        handleRoleChange(
-                          member.membershipId,
-                          event.target.value as EditableRole,
-                        )
-                      }
-                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                    >
-                      {activeWorkspace?.role === 'owner' ? (
-                        <option value="admin">admin</option>
-                      ) : null}
-                      <option value="member">member</option>
-                      <option value="viewer">viewer</option>
-                    </select>
-                  ) : (
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
-                      {member.role}
-                    </span>
-                  )}
-
-                  {canManageMembers && member.role !== 'owner' ? (
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => handleRemove(member.membershipId)}
-                      className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900/40 dark:text-rose-200 dark:hover:bg-rose-950/30"
-                    >
-                      移除
-                    </button>
-                  ) : null}
                 </div>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-gray-500 dark:text-zinc-400">当前工作空间还没有成员。</div>
-        )}
+            ))
+          ) : (
+            <div className="text-sm text-gray-500 dark:text-zinc-400">当前工作空间还没有成员。</div>
+          )}
+        </div>
       </div>
 
       {canManageMembers ? (
-        <div className="mt-6">
-          <div className="text-sm font-medium text-gray-900 dark:text-zinc-100">
-            最近生成的邀请
-          </div>
-          <div className="mt-3 space-y-3">
+        <div className="mt-8">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-4">最近生成的邀请</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {invitationsLoading ? (
               <div className="text-sm text-gray-500 dark:text-zinc-400">
                 正在读取邀请列表...
@@ -433,7 +440,7 @@ export default function WorkspaceMembersPanel() {
               invitations.map((invitation) => (
                 <div
                   key={invitation.invitationId}
-                  className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                  className="rounded-xl border border-gray-100 bg-gray-50 p-5 dark:border-zinc-800 dark:bg-zinc-950"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1 text-sm text-gray-600 dark:text-zinc-300">
