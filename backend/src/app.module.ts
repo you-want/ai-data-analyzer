@@ -26,6 +26,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { CryptoModule } from './crypto/crypto.module';
 import { SupportModule } from './support/support.module';
+import { TenacityModule } from './tenacity/tenacity.module';
 
 @Module({
   imports: [
@@ -111,6 +112,7 @@ import { SupportModule } from './support/support.module';
     MetricsModule,
     CryptoModule,
     SupportModule,
+    TenacityModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,9 +1,5 @@
-/**
- * Multi-Agent Module
- * 多智能体系统模块，整合 Router/DataCoder/Viz/Reviewer Agent 与 Supervisor
- */
-
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { OpenAIModule } from '../openai/openai.module';
 import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
@@ -12,12 +8,17 @@ import { ReviewerAgent } from './agents/reviewer.agent';
 import { Supervisor } from './supervisor.service';
 import { MultiAgentController } from './multi-agent.controller';
 import { MultiAgentGateway } from './multi-agent.gateway';
+import { MultiAgentProcessor } from './multi-agent.processor';
+import { ContextStoreService } from './context-store.service';
 import { CodeExecutionModule } from '../code-execution/code-execution.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 import { BillingModule } from '../billing/billing.module';
 
 @Module({
   imports: [
+    BullModule.registerQueue({
+      name: 'multi-agent-queue',
+    }),
     OpenAIModule,
     CodeExecutionModule,
     KnowledgeBaseModule,
@@ -31,7 +32,9 @@ import { BillingModule } from '../billing/billing.module';
     ReviewerAgent,
     Supervisor,
     MultiAgentGateway,
+    MultiAgentProcessor,
+    ContextStoreService,
   ],
-  exports: [Supervisor],
+  exports: [Supervisor, ContextStoreService],
 })
 export class MultiAgentModule {}

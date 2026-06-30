@@ -27,6 +27,7 @@ import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
 import { BillingService } from '../billing/billing.service';
+import { FallbackService } from '../tenacity/fallback.service';
 
 // 默认配置
 const DEFAULT_MAX_STEPS = 20;
@@ -45,6 +46,7 @@ export class Supervisor {
     private readonly knowledgeBaseService: KnowledgeBaseService,
     private readonly billingService: BillingService,
     @Inject('LLM_SERVICE') private readonly llmService: ILLMService,
+    private readonly fallbackService: FallbackService,
   ) {}
 
   /**
@@ -527,7 +529,12 @@ ${context.userPrompt}
 4. 建议与结论`;
 
     try {
-      const report = await this.llmService.chat(prompt);
+      const llmProvider = this.fallbackService.getLLMProvider();
+      const report = await this.fallbackService.withFallback(
+        () => llmProvider.chat(prompt),
+        () => Promise.resolve(this.buildFallbackReport(context)),
+        'llm-report',
+      );
       return report;
     } catch (error) {
       const err = error as Error;

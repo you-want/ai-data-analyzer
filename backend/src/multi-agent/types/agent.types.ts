@@ -185,6 +185,7 @@ export interface WriterAgentOutput {
 
 // 多智能体分析请求
 export interface MultiAgentAnalyzeRequest {
+  analysisId?: string;
   prompt: string;
   data: Record<string, unknown>[];
   datasetId?: string;

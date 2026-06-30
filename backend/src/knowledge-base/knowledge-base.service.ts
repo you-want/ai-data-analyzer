@@ -86,6 +86,77 @@ export class KnowledgeBaseService {
     query: string,
     topK = 5,
   ): Promise<KnowledgeQueryResult[]> {
+    const queryEmbedding = this.embed(query);
+
+    try {
+      const vectorResults = await this.tenantRlsService.runWithTenant(
+        { workspaceId },
+        async (manager) => {
+          const results = await manager.query<{
+            id: string;
+            chunk_type: string;
+            content: string;
+            metadata: string | Record<string, unknown>;
+            similarity: number;
+          }>(
+            `
+            SELECT 
+              id, 
+              chunk_type, 
+              content, 
+              metadata,
+              1 - (embedding <=> $1) as similarity
+            FROM knowledge_chunks 
+            WHERE workspace_id = $2
+            ORDER BY embedding <=> $1
+            LIMIT $3
+            `,
+            [queryEmbedding, workspaceId, topK * 3],
+          );
+
+          if (!Array.isArray(results)) {
+            return [];
+          }
+
+          return results.map(
+            (row: {
+              id: string;
+              chunk_type: string;
+              content: string;
+              metadata: string | Record<string, unknown>;
+              similarity: number;
+            }) => ({
+              chunkId: String(row.id),
+              chunkType: String(row.chunk_type),
+              content: String(row.content),
+              metadata:
+                typeof row.metadata === 'string'
+                  ? (JSON.parse(row.metadata) as Record<string, unknown>)
+                  : row.metadata,
+              score: Number(row.similarity),
+            }),
+          );
+        },
+      );
+
+      if (Array.isArray(vectorResults) && vectorResults.length > 0) {
+        return vectorResults
+          .filter((item) => item.score > 0.025)
+          .sort((left, right) => right.score - left.score)
+          .slice(0, topK);
+      }
+    } catch {
+      // ignore
+    }
+
+    return this.fallbackQuery(workspaceId, query, topK);
+  }
+
+  private async fallbackQuery(
+    workspaceId: string,
+    query: string,
+    topK = 5,
+  ): Promise<KnowledgeQueryResult[]> {
     return this.tenantRlsService.runWithTenant(
       { workspaceId },
       async (manager) => {

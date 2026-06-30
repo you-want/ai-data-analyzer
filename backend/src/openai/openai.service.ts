@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { ILLMService } from './llm.interface';
+import { ChatResult, ILLMService, TokenUsage } from './llm.interface';
 
 @Injectable()
 export class OpenAIService implements ILLMService {
@@ -65,6 +65,60 @@ export class OpenAIService implements ILLMService {
     }
   }
 
+  async chatWithUsage(prompt: string, model?: string): Promise<ChatResult> {
+    if (!this.openai) {
+      throw new Error('OPENAI_API_KEY is not defined');
+    }
+
+    try {
+      const targetModel =
+        model ||
+        this.configService.get<string>('OPENAI_MODEL') ||
+        'gpt-3.5-turbo';
+
+      this.logger.debug(`Sending prompt to OpenAI (Model: ${targetModel})`);
+      this.logger.debug(`Prompt content: ${prompt.substring(0, 100)}...`);
+
+      const response = await this.openai.chat.completions.create({
+        model: targetModel,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的数据分析AI助手。',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
+
+      const result = response.choices[0]?.message?.content || '';
+      const usage = response.usage;
+
+      const tokenUsage: TokenUsage = {
+        promptTokens: usage?.prompt_tokens ?? this.estimateTokens(prompt),
+        completionTokens:
+          usage?.completion_tokens ?? this.estimateTokens(result),
+        totalTokens:
+          usage?.total_tokens ??
+          this.estimateTokens(prompt) + this.estimateTokens(result),
+      };
+
+      this.logger.debug(`OpenAI Response: ${result.substring(0, 100)}...`);
+      this.logger.debug(`Token Usage: ${JSON.stringify(tokenUsage)}`);
+
+      return {
+        content: result,
+        usage: tokenUsage,
+        model: targetModel,
+      };
+    } catch (error) {
+      this.logger.error('Failed to call OpenAI API', error);
+      throw error;
+    }
+  }
+
   async chatStream(
     prompt: string,
     model?: string,
@@ -112,5 +166,9 @@ export class OpenAIService implements ILLMService {
       this.logger.error('Failed to call OpenAI API for streaming', error);
       throw error;
     }
+  }
+
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
   }
 }

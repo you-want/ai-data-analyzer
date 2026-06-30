@@ -10,7 +10,10 @@ import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
 import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
+import { ConfigService } from '@nestjs/config';
+import { CodeExecutionWrapperService } from '../code-execution/code-execution-wrapper.service';
 import { CodeExecutionService } from '../code-execution/code-execution.service';
+import { DockerCodeExecutionService } from '../code-execution/docker-code-execution.service';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
 import { BillingService } from '../billing/billing.service';
 
@@ -43,6 +46,14 @@ describe('MultiAgent System', () => {
         VizAgent,
         ReviewerAgent,
         CodeExecutionService,
+        DockerCodeExecutionService,
+        CodeExecutionWrapperService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue(false),
+          },
+        },
         {
           provide: 'LLM_SERVICE',
           useValue: llmServiceMock,

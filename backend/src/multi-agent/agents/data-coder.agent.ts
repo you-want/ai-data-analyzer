@@ -16,7 +16,7 @@ import type {
   DataCoderAgentOutput,
   AgentTask,
 } from '../types/agent.types';
-import { CodeExecutionService } from '../../code-execution/code-execution.service';
+import { CodeExecutionWrapperService } from '../../code-execution/code-execution-wrapper.service';
 import type { ExecRequest } from '../../code-execution/types/exec.types';
 
 @Injectable()
@@ -27,7 +27,7 @@ export class DataCoderAgent implements Agent<
   private readonly logger = new Logger(DataCoderAgent.name);
   readonly role = 'data_coder' as const;
 
-  constructor(private readonly codeExecutionService: CodeExecutionService) {}
+  constructor(private readonly codeExecutionService: CodeExecutionWrapperService) {}
 
   async run(
     input: DataCoderAgentInput,

@@ -35,7 +35,7 @@ export interface ExecResponse {
     cpuMs?: number;
     memoryMb?: number;
   };
-  engine: 'python-subprocess' | 'local-fallback';
+  engine: 'python-subprocess' | 'local-fallback' | 'docker' | 'docker-disabled' | 'validation';
 }
 
 export interface ExecutionLimits {

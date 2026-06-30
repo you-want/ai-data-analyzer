@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
-import { ILLMService } from './llm.interface';
+import { ChatResult, ILLMService, TokenUsage } from './llm.interface';
 
 @Injectable()
 export class ClaudeService implements ILLMService {
@@ -11,7 +11,6 @@ export class ClaudeService implements ILLMService {
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
 
-    // 如果没有配置 Key，这里可能在真实使用时会报错，但在演示和依赖注入注册时是没问题的
     if (!apiKey) {
       this.logger.warn('ANTHROPIC_API_KEY is not configured.');
     }
@@ -33,12 +32,50 @@ export class ClaudeService implements ILLMService {
         messages: [{ role: 'user', content: prompt }],
       });
 
-      // 注意：Anthropic SDK 返回的内容结构是一个数组，我们通常取第一个 text block
       const firstBlock = response.content[0];
       if (firstBlock.type === 'text') {
         return firstBlock.text;
       }
       return '';
+    } catch (error) {
+      this.logger.error('Failed to call Claude API', error);
+      throw error;
+    }
+  }
+
+  async chatWithUsage(prompt: string, model?: string): Promise<ChatResult> {
+    try {
+      const targetModel = model || 'claude-3-5-sonnet-20240620';
+      this.logger.debug(`Sending prompt to Claude (Model: ${targetModel})`);
+
+      const response = await this.anthropic.messages.create({
+        model: targetModel,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const firstBlock = response.content[0];
+      const result = firstBlock.type === 'text' ? firstBlock.text : '';
+
+      const tokenUsage: TokenUsage = {
+        promptTokens:
+          response.usage?.input_tokens ?? this.estimateTokens(prompt),
+        completionTokens:
+          response.usage?.output_tokens ?? this.estimateTokens(result),
+        totalTokens:
+          (response.usage?.input_tokens ?? 0) +
+            (response.usage?.output_tokens ?? 0) ||
+          this.estimateTokens(prompt) + this.estimateTokens(result),
+      };
+
+      this.logger.debug(`Claude Response: ${result.substring(0, 100)}...`);
+      this.logger.debug(`Token Usage: ${JSON.stringify(tokenUsage)}`);
+
+      return {
+        content: result,
+        usage: tokenUsage,
+        model: targetModel,
+      };
     } catch (error) {
       this.logger.error('Failed to call Claude API', error);
       throw error;
@@ -77,5 +114,9 @@ export class ClaudeService implements ILLMService {
       this.logger.error('Failed to call Claude API for streaming', error);
       throw error;
     }
+  }
+
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
   }
 }

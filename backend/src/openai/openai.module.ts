@@ -27,6 +27,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   ],
   // 将原有的 OpenAIService 和 新的 LLM_SERVICE 一起导出，
   // 保证旧代码兼容的同时，允许新代码使用 LLM_SERVICE
-  exports: [OpenAIService, 'LLM_SERVICE'],
+  exports: [OpenAIService, ClaudeService, 'LLM_SERVICE'],
 })
 export class OpenAIModule {}
