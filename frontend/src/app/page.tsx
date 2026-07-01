@@ -6,6 +6,12 @@ export default function Home() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#1e3a8a,_#020617_55%)] text-white">
       <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-12 px-6 py-16 lg:flex-row lg:items-center lg:px-10">
         <section className="max-w-3xl flex-1">
+          <div className="flex items-center gap-3 mb-6">
+            <img src="/logo.svg" alt="AI Analyzer Logo" className="w-12 h-12" />
+            <span className="text-2xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              AI Analyzer
+            </span>
+          </div>
           <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-cyan-200">
             Chapter 6 Ready
           </p>

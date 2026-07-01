@@ -24,10 +24,15 @@ export default function DashboardLayout({
       {/* 左侧边栏 (Sidebar) */}
       <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 p-4 hidden md:flex flex-col">
         <div className="mb-8 px-2">
-          <h2 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            AI Analyzer
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">智能数据洞察引擎</p>
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="AI Analyzer Logo" className="w-10 h-10" />
+            <div>
+              <h2 className="text-xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                AI Analyzer
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">智能数据洞察引擎</p>
+            </div>
+          </div>
         </div>
         
         <nav className="flex-1">
