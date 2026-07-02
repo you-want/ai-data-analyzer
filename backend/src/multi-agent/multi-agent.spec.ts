@@ -10,6 +10,8 @@ import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
 import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
+import { WriterAgent } from './agents/writer.agent';
+import { FallbackService } from '../tenacity/fallback.service';
 import { ConfigService } from '@nestjs/config';
 import { CodeExecutionWrapperService } from '../code-execution/code-execution-wrapper.service';
 import { CodeExecutionService } from '../code-execution/code-execution.service';
@@ -37,6 +39,18 @@ describe('MultiAgent System', () => {
       finishJob: jest.fn().mockResolvedValue(undefined),
       recordUsage: jest.fn().mockResolvedValue(undefined),
     };
+    const fallbackServiceMock = {
+      getLLMProvider: jest.fn().mockReturnValue({
+        chat: jest.fn().mockRejectedValue(new Error('No external LLM in unit test')),
+      }),
+      withFallback: jest.fn().mockImplementation(async (primary, fallback) => {
+        try {
+          return await primary();
+        } catch {
+          return await fallback();
+        }
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -45,6 +59,7 @@ describe('MultiAgent System', () => {
         DataCoderAgent,
         VizAgent,
         ReviewerAgent,
+        WriterAgent,
         CodeExecutionService,
         DockerCodeExecutionService,
         CodeExecutionWrapperService,
@@ -65,6 +80,10 @@ describe('MultiAgent System', () => {
         {
           provide: BillingService,
           useValue: billingServiceMock,
+        },
+        {
+          provide: FallbackService,
+          useValue: fallbackServiceMock,
         },
       ],
     }).compile();

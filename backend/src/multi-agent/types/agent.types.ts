@@ -54,6 +54,8 @@ export interface AnalysisPlan {
 // 分析运行上下文（共享上下文）
 export interface AnalysisRunContext {
   analysisId: string;
+  workspaceId?: string;
+  userId?: string;
   datasetId?: string;
   userPrompt: string;
   rawData?: Record<string, unknown>[];

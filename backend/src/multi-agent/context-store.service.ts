@@ -89,7 +89,40 @@ export class ContextStoreService {
     );
   }
 
-  getTaskUpdates(): unknown[] {
-    return [];
+  async getTaskUpdates(analysisId: string): Promise<unknown[]> {
+    const progress = await this.getProgress(analysisId);
+    if (!progress) {
+      return [];
+    }
+
+    const context = await this.getContext(analysisId);
+    if (!context) {
+      return [];
+    }
+
+    const plan = (context as unknown as Record<string, unknown>).plan as
+      | { tasks?: unknown[] }
+      | undefined;
+    const tasks = plan?.tasks as unknown[] || [];
+
+    const updates: unknown[] = [];
+    for (const task of tasks) {
+      const taskObj = task as Record<string, unknown>;
+      const taskId = taskObj.id as string;
+      if (taskId) {
+        const taskUpdate = await this.cacheManager.get<string>(
+          `ma_task:${analysisId}:${taskId}`,
+        );
+        if (taskUpdate) {
+          try {
+            updates.push(JSON.parse(taskUpdate));
+          } catch {
+            updates.push(taskUpdate);
+          }
+        }
+      }
+    }
+
+    return updates;
   }
 }

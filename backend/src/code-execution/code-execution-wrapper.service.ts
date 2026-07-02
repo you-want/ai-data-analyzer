@@ -12,11 +12,26 @@ type StructuredRow = Record<string, unknown>;
 @Injectable()
 export class CodeExecutionWrapperService {
   private readonly logger = new Logger(CodeExecutionWrapperService.name);
+  private activeEngine: 'docker' | 'subprocess' = 'subprocess';
 
   constructor(
     private readonly dockerService: DockerCodeExecutionService,
     private readonly fallbackService: CodeExecutionService,
-  ) {}
+  ) {
+    // 启动时检测 Docker 可用性
+    if (this.dockerService.isDockerAvailable()) {
+      this.activeEngine = 'docker';
+      this.logger.log('代码执行器使用 Docker 沙箱模式');
+    } else {
+      this.activeEngine = 'subprocess';
+      this.logger.warn('Docker 不可用，代码执行器降级到子进程模式');
+    }
+  }
+
+  /** 返回当前活跃的执行引擎名称 */
+  getActiveEngine(): string {
+    return this.activeEngine;
+  }
 
   async execute(
     request: ExecRequest,
@@ -30,12 +45,15 @@ export class CodeExecutionWrapperService {
       return this.buildFailure(err.message, 0);
     }
 
+    // 优先尝试 Docker
     if (this.dockerService.isDockerAvailable()) {
       try {
         const result = await this.dockerService.execute(request, dataset, limits);
         if (result.ok) {
+          this.activeEngine = 'docker';
           return result;
         }
+        // Docker 执行失败，记录日志并降级
         this.logger.warn(`Docker 执行失败，降级到子进程: ${result.stderr}`);
       } catch (error) {
         const err = error as Error;
@@ -43,6 +61,8 @@ export class CodeExecutionWrapperService {
       }
     }
 
+    // 降级到子进程执行
+    this.activeEngine = 'subprocess';
     return this.fallbackService.execute(request, dataset, limits);
   }
 

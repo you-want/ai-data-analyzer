@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Get,
+} from '@nestjs/common';
 import { CodeExecutionWrapperService } from './code-execution-wrapper.service';
 import type { ExecRequest, ExecResponse } from './types/exec.types';
 
@@ -12,9 +19,12 @@ export class CodeExecutionController {
     return this.codeExecutionService.execute(body.request, body.dataset);
   }
 
-  @Post('health')
+  @Get('health')
   @HttpCode(HttpStatus.OK)
-  health(): { status: string } {
-    return { status: 'ok' };
+  health(): { status: string; engine: string } {
+    return {
+      status: 'ok',
+      engine: this.codeExecutionService.getActiveEngine(),
+    };
   }
 }

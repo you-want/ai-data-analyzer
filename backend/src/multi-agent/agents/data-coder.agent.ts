@@ -45,7 +45,7 @@ export class DataCoderAgent implements Agent<
       );
 
       const output = execution.ok
-        ? this.buildOutputFromExecution(task, execution.results ?? {})
+        ? this.buildOutputFromExecution(task, execution.results ?? {}, execution.metrics?.durationMs, execution.engine)
         : this.buildFallbackOutput(task, data);
 
       return {
@@ -199,12 +199,14 @@ ORDER BY dimension ASC
   private buildOutputFromExecution(
     task: AgentTask,
     results: Record<string, unknown>,
+    durationMs?: number,
+    engine?: string,
   ): DataCoderAgentOutput {
     if (task.type === 'data_profile') {
       return {
         resultKey: `profile_${task.id}`,
-        result: results,
-        processDescription: '通过受控 Python 执行器生成数据画像与缺失统计',
+        result: { ...results, _execDurationMs: durationMs, _execEngine: engine },
+        processDescription: `通过受控 ${engine || 'Python'} 执行器生成数据画像与缺失统计`,
       };
     }
 

@@ -83,7 +83,7 @@ export class CodeExecutionService {
           ok: false,
           stdout: execution.stdout.slice(0, maxOutputBytes),
           stderr: execution.stderr.slice(0, maxOutputBytes),
-          metrics: { durationMs },
+          metrics: { durationMs, cpuMs: execution.cpuMs, memoryMb: execution.memoryMb },
           engine: 'python-subprocess',
         };
       }
@@ -98,7 +98,7 @@ export class CodeExecutionService {
         stderr: execution.stderr.slice(0, maxOutputBytes),
         results: parsed,
         artifacts: [],
-        metrics: { durationMs },
+        metrics: { durationMs, cpuMs: execution.cpuMs, memoryMb: execution.memoryMb },
         engine: 'python-subprocess',
       };
     } catch (error) {
@@ -130,7 +130,7 @@ export class CodeExecutionService {
   private async runPython(
     scriptPath: string,
     timeoutMs: number,
-  ): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+  ): Promise<{ ok: boolean; stdout: string; stderr: string; cpuMs?: number; memoryMb?: number }> {
     return new Promise((resolve, reject) => {
       const child = spawn('python3', ['-I', scriptPath], {
         env: {},
@@ -140,6 +140,7 @@ export class CodeExecutionService {
       let stdout = '';
       let stderr = '';
       let settled = false;
+      let maxMemoryBytes = 0;
 
       const timer = setTimeout(() => {
         if (!settled) {
@@ -149,9 +150,21 @@ export class CodeExecutionService {
             ok: false,
             stdout,
             stderr: `${stderr}\nExecution timed out after ${timeoutMs}ms`,
+            memoryMb: maxMemoryBytes > 0 ? Math.round(maxMemoryBytes / (1024 * 1024)) : undefined,
           });
         }
       }, timeoutMs);
+
+      const memoryCheck = setInterval(() => {
+        if (child.pid) {
+          try {
+            const usage = process.memoryUsage();
+            maxMemoryBytes = Math.max(maxMemoryBytes, usage.rss);
+          } catch {
+            // ignore
+          }
+        }
+      }, 100);
 
       child.stdout.on('data', (chunk: Buffer) => {
         stdout += chunk.toString('utf8');
@@ -161,19 +174,31 @@ export class CodeExecutionService {
       });
       child.on('error', (error) => {
         clearTimeout(timer);
+        clearInterval(memoryCheck);
         if (!settled) {
           settled = true;
           reject(error);
         }
       });
-      child.on('exit', (code) => {
+      child.on('exit', (code, signal) => {
         clearTimeout(timer);
+        clearInterval(memoryCheck);
         if (!settled) {
           settled = true;
+          const usageFn = (child as unknown as { resourceUsage?: () => { userCPU: number; systemCPU: number } }).resourceUsage;
+          const usage = usageFn ? usageFn() : undefined;
+          const cpuMs = usage
+            ? Math.round((usage.userCPU + usage.systemCPU) / 1000)
+            : undefined;
+          const memoryMb = maxMemoryBytes > 0
+            ? Math.round(maxMemoryBytes / (1024 * 1024))
+            : undefined;
           resolve({
             ok: code === 0,
             stdout,
             stderr,
+            cpuMs,
+            memoryMb,
           });
         }
       });

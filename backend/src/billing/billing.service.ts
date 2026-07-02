@@ -5,6 +5,7 @@ import {
   Logger,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -185,7 +186,7 @@ export class BillingService {
     eventKey: string;
     units: Record<string, unknown>;
     metadata?: Record<string, unknown>;
-  }): Promise<BillingLedger> {
+  }): Promise<BillingLedger | null> {
     return this.tenantRlsService.runWithTenant(
       {
         workspaceId: input.workspaceId,
@@ -193,24 +194,37 @@ export class BillingService {
       },
       async (manager) => {
         const ledgerRepository = manager.getRepository(BillingLedger);
-        const existing = await ledgerRepository.findOne({
-          where: { workspaceId: input.workspaceId, eventKey: input.eventKey },
-        });
 
+        // 幂等检查：如果相同 eventKey 已存在，跳过重复写入
+        const existing = await ledgerRepository.findOne({
+          where: {
+            workspaceId: input.workspaceId,
+            eventKey: input.eventKey,
+          },
+        });
         if (existing) {
-          return existing;
+          return null; // 幂等：重复调用不产生新记录
         }
 
-        return ledgerRepository.save(
-          ledgerRepository.create({
-            workspaceId: input.workspaceId,
-            userId: input.userId,
-            eventType: input.eventType,
-            eventKey: input.eventKey,
-            units: input.units,
-            metadata: input.metadata ?? {},
-          }),
-        );
+        try {
+          return await ledgerRepository.save(
+            ledgerRepository.create({
+              workspaceId: input.workspaceId,
+              userId: input.userId,
+              eventType: input.eventType,
+              eventKey: input.eventKey,
+              units: input.units,
+              metadata: input.metadata ?? {},
+            }),
+          );
+        } catch (error) {
+          // 竞态条件保护：如果唯一索引约束违反，静默忽略
+          const err = error as Error;
+          if (err.message?.includes('duplicate key') || err.message?.includes('unique')) {
+            return null;
+          }
+          throw error;
+        }
       },
     );
   }
@@ -397,7 +411,7 @@ export class BillingService {
       );
     }
 
-    await this.cacheManager.set(key, { count }, ttlSeconds * 1000);
+    await this.cacheManager.set(key, { count }, ttlSeconds);
   }
 
   private async guardConcurrentJobs(

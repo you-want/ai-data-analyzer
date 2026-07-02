@@ -19,12 +19,14 @@ import {
   type DataCoderAgentOutput,
   type VizAgentOutput,
   type ChartConfig,
+  type ReviewerAgentOutput,
   RunStatus,
 } from './types/agent.types';
 import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
 import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
+import { WriterAgent } from './agents/writer.agent';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
 import { BillingService } from '../billing/billing.service';
 import { FallbackService } from '../tenacity/fallback.service';
@@ -43,6 +45,7 @@ export class Supervisor {
     private readonly dataCoderAgent: DataCoderAgent,
     private readonly vizAgent: VizAgent,
     private readonly reviewerAgent: ReviewerAgent,
+    private readonly writerAgent: WriterAgent,
     private readonly knowledgeBaseService: KnowledgeBaseService,
     private readonly billingService: BillingService,
     @Inject('LLM_SERVICE') private readonly llmService: ILLMService,
@@ -77,6 +80,8 @@ export class Supervisor {
     // 初始化上下文
     const context: AnalysisRunContext = {
       analysisId,
+      workspaceId: request.workspaceId,
+      userId: request.userId,
       datasetId: request.datasetId,
       userPrompt: request.prompt,
       rawData: request.data,
@@ -106,6 +111,22 @@ export class Supervisor {
       // Step 1: Router Agent 生成任务计划
       this.emitProgress(context, '正在分析用户意图...', onProgress);
       const routerResult = await this.routerAgent.run(request.prompt, context);
+
+      if (request.workspaceId && routerResult.success) {
+        await this.billingService.recordUsage({
+          workspaceId: request.workspaceId,
+          userId: request.userId,
+          eventType: 'llm',
+          eventKey: `${analysisId}:router`,
+          units: {
+            tokens: this.estimateTokens(routerResult.summary || ''),
+          },
+          metadata: {
+            agent: 'router',
+            taskCount: routerResult.data?.tasks.length ?? 0,
+          },
+        });
+      }
 
       if (!routerResult.success || !routerResult.data) {
         return this.buildErrorResponse(
@@ -181,6 +202,23 @@ export class Supervisor {
             userPrompt: request.prompt,
           },
         });
+
+        // 记录存储计量（知识库 chunk 数量）
+        const chunkCount = this.countChunksInArtifacts(context.artifacts);
+        if (chunkCount > 0) {
+          await this.billingService.recordUsage({
+            workspaceId: request.workspaceId,
+            userId: request.userId,
+            eventType: 'storage',
+            eventKey: `${analysisId}:storage:report`,
+            units: {
+              chunks: chunkCount,
+            },
+            metadata: {
+              source: 'knowledge-base-ingestion',
+            },
+          });
+        }
 
         await this.billingService.recordUsage({
           workspaceId: request.workspaceId,
@@ -284,6 +322,46 @@ export class Supervisor {
               });
             }
           }
+
+          // 记录 LLM Agent 任务的用量
+          if ((task.type === 'chart_spec' || task.type === 'review') && context.workspaceId) {
+            const role = this.getRoleForTaskType(task.type);
+            await this.billingService.recordUsage({
+              workspaceId: context.workspaceId,
+              eventType: 'llm',
+              eventKey: `${context.analysisId}:${task.id}`,
+              units: {
+                tokens: this.estimateTokens(result.summary || ''),
+              },
+              metadata: {
+                agent: role,
+                taskType: task.type,
+              },
+            });
+          }
+
+          // 记录执行器用量（data_profile / compute_metrics）
+          if (
+            (task.type === 'data_profile' || task.type === 'compute_metrics') &&
+            context.workspaceId &&
+            result.execDurationMs
+          ) {
+            const rawResult = task.outputs as Record<string, unknown> | undefined;
+            const execEngine = (rawResult?._execEngine as string) || 'unknown';
+            await this.billingService.recordUsage({
+              workspaceId: context.workspaceId,
+              userId: context.userId,
+              eventType: 'exec',
+              eventKey: `${context.analysisId}:${task.id}:exec`,
+              units: {
+                durationMs: result.execDurationMs,
+              },
+              metadata: {
+                engine: execEngine,
+                taskType: task.type,
+              },
+            });
+          }
         } else {
           task.status = 'failed';
           task.error = {
@@ -314,6 +392,7 @@ export class Supervisor {
     data?: unknown;
     error?: { message: string; code?: string };
     summary?: string;
+    execDurationMs?: number;
   }> {
     const maxRetries = DEFAULT_MAX_RETRIES;
     let lastError: Error | null = null;
@@ -328,10 +407,14 @@ export class Supervisor {
               context,
             );
             if (result.success) {
+              // 提取执行器时长用于计费
+              const rawResult = result.data as DataCoderAgentOutput & { result?: { _execDurationMs?: number } };
+              const execDurationMs = rawResult?.result?._execDurationMs;
               return {
                 success: true,
                 data: result.data,
                 summary: result.summary,
+                execDurationMs,
               };
             }
             lastError = new Error(result.error?.message);
@@ -496,46 +579,29 @@ export class Supervisor {
    * 生成最终报告
    */
   private async generateReport(context: AnalysisRunContext): Promise<string> {
-    const summaries = context.summaries
-      .map((s) => `- [${s.role}] ${s.text}`)
-      .join('\n');
-    const artifacts = Object.keys(context.artifacts);
-    const retrievedContext =
-      typeof context.artifacts['retrieved_context'] === 'string'
-        ? context.artifacts['retrieved_context']
-        : '无';
-
-    const prompt = `你是一个数据分析报告撰写专家。请根据以下分析过程和结果，生成一份清晰、专业的分析报告。
-
-【分析目标】
-${context.plan?.goal || context.userPrompt}
-
-【分析过程摘要】
-${summaries}
-
-【生成的产物】
-${artifacts.join(', ')}
-
-【历史上下文 / 知识库召回】
-${retrievedContext}
-
-【用户原始请求】
-${context.userPrompt}
-
-请生成一份结构清晰、重点突出的分析报告，包含：
-1. 分析概述
-2. 关键发现
-3. 数据洞察
-4. 建议与结论`;
+    const reviewResult = (context.artifacts['review'] as ReviewerAgentOutput) || {
+      status: 'pass',
+    };
+    const charts = (context.artifacts['charts'] as ChartConfig[]) || [];
 
     try {
-      const llmProvider = this.fallbackService.getLLMProvider();
-      const report = await this.fallbackService.withFallback(
-        () => llmProvider.chat(prompt),
-        () => Promise.resolve(this.buildFallbackReport(context)),
-        'llm-report',
+      const writerResult = await this.writerAgent.run(
+        {
+          userPrompt: context.userPrompt,
+          dataResults: context.artifacts,
+          charts,
+          reviewResult,
+          style: 'bullet',
+          audience: 'business',
+        },
+        context,
       );
-      return report;
+
+      if (writerResult.success && writerResult.data?.report) {
+        return writerResult.data.report;
+      }
+
+      throw new Error(writerResult.error?.message || 'Writer Agent 输出为空');
     } catch (error) {
       const err = error as Error;
       this.logger.error(`生成报告失败: ${err.message}`);
@@ -660,7 +726,7 @@ ${context.userPrompt}
       ``,
       `## 总结`,
       `- 当前报告由规则兜底生成，适合本地开发和离线验证。`,
-      `- 如果要更像“会写 PPT 的分析师”，补上真实大模型配置即可。`,
+      `- 如果要更像"会写 PPT 的分析师"，补上真实大模型配置即可。`,
     ].join('\n');
   }
 
@@ -676,5 +742,17 @@ ${context.userPrompt}
 
   private estimateTokens(text: string): number {
     return Math.ceil(text.length / 4);
+  }
+
+  private countChunksInArtifacts(
+    artifacts: Record<string, unknown>,
+  ): number {
+    let count = 0;
+    for (const value of Object.values(artifacts)) {
+      if (Array.isArray(value)) {
+        count += value.length;
+      }
+    }
+    return count;
   }
 }

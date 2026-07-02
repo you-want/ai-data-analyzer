@@ -5,6 +5,7 @@ import { RouterAgent } from './agents/router.agent';
 import { DataCoderAgent } from './agents/data-coder.agent';
 import { VizAgent } from './agents/viz.agent';
 import { ReviewerAgent } from './agents/reviewer.agent';
+import { WriterAgent } from './agents/writer.agent';
 import { Supervisor } from './supervisor.service';
 import { MultiAgentController } from './multi-agent.controller';
 import { MultiAgentGateway } from './multi-agent.gateway';
@@ -30,6 +31,7 @@ import { BillingModule } from '../billing/billing.module';
     DataCoderAgent,
     VizAgent,
     ReviewerAgent,
+    WriterAgent,
     Supervisor,
     MultiAgentGateway,
     MultiAgentProcessor,
